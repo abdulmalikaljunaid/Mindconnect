@@ -29,42 +29,77 @@ export const authService = {
       createdAt: new Date().toISOString(),
     }
 
-    // Store in localStorage for demo
-    localStorage.setItem("user", JSON.stringify(user))
+    // Store user in users collection
+    const users = this.getAllUsers()
+    users[user.id] = user
+    localStorage.setItem("users", JSON.stringify(users))
+    
+    // Set as current user
+    localStorage.setItem("currentUser", JSON.stringify(user))
     return user
   },
 
-  async signIn(email: string, password: string): Promise<User> {
+  async signIn(email: string, password: string, userType: "user" | "doctor"): Promise<User> {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    // Mock user lookup
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      return JSON.parse(storedUser)
+    // Get all users
+    const users = this.getAllUsers()
+    
+    // Find user by email
+    const user = Object.values(users).find(u => u.email === email)
+    
+    if (user) {
+      // Check if user type matches
+      const isDoctor = user.role === "doctor" || user.role === "admin"
+      const isUser = user.role === "patient" || user.role === "companion"
+      
+      if ((userType === "doctor" && !isDoctor) || (userType === "user" && !isUser)) {
+        throw new Error("نوع الحساب غير صحيح")
+      }
+      
+      // Set as current user
+      localStorage.setItem("currentUser", JSON.stringify(user))
+      return user
     }
 
-    // Create a demo user if none exists
-    const user: User = {
+    // If no user found, create a demo user based on type
+    const role = userType === "doctor" ? "doctor" : "patient"
+    const newUser: User = {
       id: Math.random().toString(36).substring(7),
       email,
       name: email.split("@")[0],
-      role: "patient",
-      approved: true,
+      role,
+      approved: role !== "doctor",
       createdAt: new Date().toISOString(),
     }
 
-    localStorage.setItem("user", JSON.stringify(user))
-    return user
+    // Store in users collection
+    users[newUser.id] = newUser
+    localStorage.setItem("users", JSON.stringify(users))
+    localStorage.setItem("currentUser", JSON.stringify(newUser))
+    return newUser
   },
 
   async signOut(): Promise<void> {
-    localStorage.removeItem("user")
+    localStorage.removeItem("currentUser")
   },
 
   getCurrentUser(): User | null {
     if (typeof window === "undefined") return null
-    const storedUser = localStorage.getItem("user")
+    const storedUser = localStorage.getItem("currentUser")
     return storedUser ? JSON.parse(storedUser) : null
+  },
+
+  getAllUsers(): Record<string, User> {
+    if (typeof window === "undefined") return {}
+    const storedUsers = localStorage.getItem("users")
+    return storedUsers ? JSON.parse(storedUsers) : {}
+  },
+
+  // Helper method to check if user exists
+  async checkUserExists(email: string): Promise<boolean> {
+    const users = this.getAllUsers()
+    return Object.values(users).some(u => u.email === email)
   },
 }
