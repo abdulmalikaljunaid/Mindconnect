@@ -4,51 +4,64 @@ import { Star } from "lucide-react"
 export function Testimonials() {
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      role: "Patient",
+      name: "سارة جونسون",
+      role: "مريضة",
       content:
-        "MindCare helped me find the perfect therapist. The symptoms matcher was incredibly accurate, and booking appointments is so easy.",
+        "ساعدتني عناية العقل في العثور على المعالج المثالي. مطابق الأعراض كان دقيقاً بشكل لا يصدق، وحجز المواعيد سهل جداً.",
       rating: 5,
     },
     {
-      name: "Dr. Michael Chen",
-      role: "Psychiatrist",
+      name: "د. مايكل تشين",
+      role: "طبيب نفسي",
       content:
-        "As a doctor, this platform makes managing my practice seamless. The admin approval process ensures quality, and my patients love the convenience.",
+        "كطبيب، هذه المنصة تجعل إدارة ممارستي سلسة. عملية الموافقة الإدارية تضمن الجودة، ومرضاي يحبون الراحة.",
       rating: 5,
     },
     {
-      name: "Emily Rodriguez",
-      role: "Patient Companion",
+      name: "إيميلي رودريغيز",
+      role: "مرافقة مريض",
       content:
-        "Being able to support my sister through her mental health journey has been invaluable. The companion features keep me informed and involved.",
+        "القدرة على دعم أختي خلال رحلتها نحو الصحة النفسية كانت لا تقدر بثمن. ميزات المرافق تحرص على إبقائي على علم ومشاركة.",
       rating: 5,
     },
   ]
 
   return (
-    <section id="testimonials" className="bg-muted py-20 md:py-32">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="mb-4 text-balance text-3xl font-bold md:text-4xl">What Our Community Says</h2>
-          <p className="mb-16 text-pretty text-lg text-muted-foreground">
-            Real stories from patients, doctors, and companions who have found support through MindCare.
+    <section id="testimonials" className="relative bg-slate-50 py-24 md:py-36">
+      {/* Smooth transition gradient */}
+      <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-slate-50 to-slate-50"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-slate-50"></div>
+      
+      <div className="container mx-auto px-4 relative">
+        <div className="mx-auto max-w-4xl text-center mb-20">
+          <h2 className="mb-6 text-balance text-4xl font-bold text-slate-900 md:text-5xl">ماذا يقول مجتمعنا</h2>
+          <p className="text-pretty text-xl text-slate-600 leading-relaxed">
+            قصص حقيقية من المرضى والأطباء والمرافقين الذين وجدوا الدعم من خلال عناية العقل.
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-3">
+        <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
           {testimonials.map((testimonial, index) => (
-            <Card key={index} className="bg-card">
-              <CardContent className="pt-6">
+            <Card key={index} className="relative overflow-hidden rounded-xl border bg-card shadow-sm">
+              <CardContent className="p-6">
                 <div className="mb-4 flex gap-1">
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-accent text-accent" />
+                    <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="mb-4 text-sm leading-relaxed text-card-foreground">"{testimonial.content}"</p>
-                <div>
-                  <p className="font-semibold text-card-foreground">{testimonial.name}</p>
-                  <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                <blockquote className="mb-4 text-sm leading-relaxed text-card-foreground italic">
+                  "{testimonial.content}"
+                </blockquote>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                    <span className="text-muted-foreground font-semibold text-sm">
+                      {testimonial.name.split(' ').map(n => n[0]).join('')}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-card-foreground">{testimonial.name}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
