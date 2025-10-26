@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { authService, type User, type AuthState } from "@/lib/auth"
 
 interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string, userType: "user" | "doctor") => Promise<void>
   signUp: (email: string, password: string, name: string, role: "patient" | "doctor" | "companion") => Promise<void>
   signOut: () => Promise<void>
   isLoading: boolean
@@ -23,8 +23,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  const signIn = async (email: string, password: string) => {
-    const user = await authService.signIn(email, password)
+  const signIn = async (email: string, password: string, userType: "user" | "doctor") => {
+    const user = await authService.signIn(email, password, userType)
     setUser(user)
   }
 
