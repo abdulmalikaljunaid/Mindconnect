@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,12 +10,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
-import { User, Star, Video, MapPin, CalendarIcon, Clock, ArrowRight, ArrowLeft } from "lucide-react"
+import { User, Star, Video, MapPin, CalendarIcon, Clock, ArrowRight, ArrowLeft, Brain } from "lucide-react"
+import { getDoctorById } from "@/lib/doctors"
+import type { Doctor } from "@/types/assessment"
 
 export default function BookAppointmentPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const doctorId = searchParams.get("doctor")
+  const doctorId = searchParams.get("doctorId") || searchParams.get("doctor")
 
   const [step, setStep] = useState(1)
   const [selectedDoctor, setSelectedDoctor] = useState(doctorId || "")
@@ -23,6 +25,23 @@ export default function BookAppointmentPage() {
   const [selectedTime, setSelectedTime] = useState("")
   const [appointmentType, setAppointmentType] = useState<"video" | "in-person">("video")
   const [notes, setNotes] = useState("")
+  const [preSelectedDoctor, setPreSelectedDoctor] = useState<Doctor | null>(null)
+
+  // تحميل الطبيب المختار من localStorage إذا كان موجوداً
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedDoctor = localStorage.getItem('selectedDoctor')
+      if (savedDoctor) {
+        try {
+          const doctor = JSON.parse(savedDoctor)
+          setPreSelectedDoctor(doctor)
+          setSelectedDoctor(doctor.id)
+        } catch (error) {
+          console.error('Error parsing saved doctor:', error)
+        }
+      }
+    }
+  }, [])
 
   const doctors = [
     {
@@ -70,9 +89,47 @@ export default function BookAppointmentPage() {
     <DashboardLayout>
       <div className="mx-auto max-w-4xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Book an Appointment</h1>
-          <p className="text-muted-foreground">Schedule a session with a mental health professional</p>
+          <h1 className="text-3xl font-bold">احجز موعدك</h1>
+          <p className="text-muted-foreground">جدولة جلسة مع متخصص في الصحة النفسية</p>
         </div>
+
+        {/* عرض الطبيب المختار مسبقاً من التقييم */}
+        {preSelectedDoctor && (
+          <Card className="border-l-4 border-l-primary bg-primary/5">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">الطبيب المقترح لك</CardTitle>
+              </div>
+              <CardDescription>
+                تم اختيار هذا الطبيب بناءً على تقييمك الذكي
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <User className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold">{preSelectedDoctor.nameAr}</h3>
+                  <p className="text-sm text-muted-foreground">{preSelectedDoctor.name}</p>
+                  <div className="flex items-center gap-4 mt-1">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm">{preSelectedDoctor.rating}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {preSelectedDoctor.experience} سنة خبرة
+                    </span>
+                  </div>
+                </div>
+                <Badge className="bg-primary/10 text-primary">
+                  مقترح لك
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-2">
