@@ -46,8 +46,8 @@ export default function UserSignUpPage() {
     try {
       await signUp(email, password, name, role)
       router.push("/dashboard")
-    } catch (err) {
-      setError("فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")
+    } catch (err: any) {
+      setError(err?.message ?? "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")
     } finally {
       setIsLoading(false)
     }

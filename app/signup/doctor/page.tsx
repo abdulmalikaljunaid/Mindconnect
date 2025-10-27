@@ -51,8 +51,8 @@ export default function DoctorSignUpPage() {
       } else {
         router.push("/dashboard")
       }
-    } catch (err) {
-      setError("فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")
+    } catch (err: any) {
+      setError(err?.message ?? "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")
     } finally {
       setIsLoading(false)
     }
@@ -99,13 +99,13 @@ export default function DoctorSignUpPage() {
                   </Label>
                 </div>
 
-                <div className="flex items-center space-x-2 space-x-reverse rounded-lg border border-border p-3 hover:bg-accent">
-                  <RadioGroupItem value="admin" id="admin" />
-                  <Label htmlFor="admin" className="flex flex-1 cursor-pointer items-center gap-2">
+                <div className="flex items-center space-x-2 space-x-reverse rounded-lg border border-border p-3 opacity-50 cursor-not-allowed">
+                  <RadioGroupItem value="admin" id="admin" disabled />
+                  <Label htmlFor="admin" className="flex flex-1 cursor-not-allowed items-center gap-2">
                     <Shield className="h-4 w-4" />
                     <div>
                       <div className="font-medium">إداري</div>
-                      <div className="text-xs text-muted-foreground">إدارة النظام والموافقات</div>
+                      <div className="text-xs text-muted-foreground">غير متاح للعامة</div>
                     </div>
                   </Label>
                 </div>

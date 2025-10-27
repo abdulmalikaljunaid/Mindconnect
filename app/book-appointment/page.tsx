@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { User, Star, Video, MapPin, CalendarIcon, Clock, ArrowRight, ArrowLeft, Brain } from "lucide-react"
-import { getDoctorById } from "@/lib/doctors"
+import { fetchApprovedDoctors } from "@/lib/server/doctor-matcher"
 import type { Doctor } from "@/types/assessment"
 
 export default function BookAppointmentPage() {
@@ -26,55 +26,34 @@ export default function BookAppointmentPage() {
   const [appointmentType, setAppointmentType] = useState<"video" | "in-person">("video")
   const [notes, setNotes] = useState("")
   const [preSelectedDoctor, setPreSelectedDoctor] = useState<Doctor | null>(null)
+  const [availableDoctors, setAvailableDoctors] = useState<Doctor[]>([])
 
   // تحميل الطبيب المختار من localStorage إذا كان موجوداً
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedDoctor = localStorage.getItem('selectedDoctor')
+    if (typeof window !== "undefined") {
+      const savedDoctor = localStorage.getItem("selectedDoctor")
       if (savedDoctor) {
         try {
-          const doctor = JSON.parse(savedDoctor)
+          const doctor = JSON.parse(savedDoctor) as Doctor
           setPreSelectedDoctor(doctor)
           setSelectedDoctor(doctor.id)
         } catch (error) {
-          console.error('Error parsing saved doctor:', error)
+          console.error("Error parsing saved doctor:", error)
         }
       }
     }
   }, [])
 
-  const doctors = [
-    {
-      id: "1",
-      name: "Dr. Sarah Williams",
-      specialty: "Clinical Psychologist",
-      experience: "15 years",
-      rating: 4.9,
-      reviews: 127,
-      specializations: ["Anxiety", "Depression", "Stress Management"],
-      availability: "Available this week",
-    },
-    {
-      id: "2",
-      name: "Dr. Michael Chen",
-      specialty: "Psychiatrist",
-      experience: "12 years",
-      rating: 4.8,
-      reviews: 98,
-      specializations: ["Mood Disorders", "Anxiety", "Medication Management"],
-      availability: "Available this week",
-    },
-    {
-      id: "3",
-      name: "Dr. Emily Thompson",
-      specialty: "Licensed Therapist",
-      experience: "10 years",
-      rating: 4.9,
-      reviews: 156,
-      specializations: ["CBT", "Trauma", "Sleep Disorders"],
-      availability: "Available next week",
-    },
-  ]
+  useEffect(() => {
+    const loadDoctors = async () => {
+      const doctors = await fetchApprovedDoctors()
+      setAvailableDoctors(doctors)
+    }
+
+    loadDoctors()
+  }, [])
+
+  const doctors = availableDoctors
 
   const timeSlots = ["9:00 AM", "10:00 AM", "11:00 AM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM"]
 

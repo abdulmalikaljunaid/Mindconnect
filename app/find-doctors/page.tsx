@@ -9,63 +9,90 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Search, Star, ArrowRight } from "lucide-react"
 import Link from "next/link"
+import { useAdminDoctors } from "@/hooks/use-doctors"
+import { useEffect, useMemo } from "react"
+import { supabaseClient } from "@/lib/supabase-client"
+
+interface DoctorWithDetails {
+  id: string
+  name: string
+  specialties: string[]
+  experienceYears: number | null
+  rating: number | null
+  reviewsCount: number | null
+  offersVideo: boolean | null
+  offersInPerson: boolean | null
+  bio: string | null
+}
+
+const useFindDoctors = () => {
+  const [doctors, setDoctors] = useState<DoctorWithDetails[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      setIsLoading(true)
+      const { data, error } = await supabaseClient
+        .from("doctor_profiles")
+        .select(
+          `
+          profile_id,
+          experience_years,
+          offers_video,
+          offers_in_person,
+          metadata,
+          profile:profiles(name, bio, is_approved),
+          doctor_specialties(speciality:specialties(name))
+        `,
+        )
+        .eq("profile.is_approved", true)
+
+      if (error) {
+        console.error(error)
+        setDoctors([])
+      } else {
+        setDoctors(
+          (data ?? []).map((row) => ({
+            id: row.profile_id,
+            name: row.profile?.name ?? "بدون اسم",
+            specialties: (row.doctor_specialties ?? []).map((item) => item.speciality?.name ?? "")?.filter(Boolean),
+            experienceYears: row.experience_years ?? null,
+            rating: row.metadata?.rating ?? null,
+            reviewsCount: row.metadata?.reviews_count ?? null,
+            offersVideo: row.offers_video,
+            offersInPerson: row.offers_in_person,
+            bio: row.profile?.bio ?? row.metadata?.bio ?? null,
+          })),
+        )
+      }
+      setIsLoading(false)
+    }
+
+    fetchDoctors()
+  }, [])
+
+  return { doctors, isLoading }
+}
 
 export default function FindDoctorsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [specialty, setSpecialty] = useState("all")
+  const { doctors, isLoading } = useFindDoctors()
 
-  const doctors = [
-    {
-      id: 1,
-      name: "Dr. Sarah Williams",
-      specialty: "Clinical Psychologist",
-      experience: "15 years",
-      rating: 4.9,
-      reviews: 127,
-      specializations: ["Anxiety", "Depression", "Stress Management"],
-      availability: "Available this week",
-      bio: "Specializing in cognitive behavioral therapy with a focus on anxiety and depression management.",
-    },
-    {
-      id: 2,
-      name: "Dr. Michael Chen",
-      specialty: "Psychiatrist",
-      experience: "12 years",
-      rating: 4.8,
-      reviews: 98,
-      specializations: ["Mood Disorders", "Anxiety", "Medication Management"],
-      availability: "Available this week",
-      bio: "Board-certified psychiatrist with expertise in medication management and mood disorders.",
-    },
-    {
-      id: 3,
-      name: "Dr. Emily Thompson",
-      specialty: "Licensed Therapist",
-      experience: "10 years",
-      rating: 4.9,
-      reviews: 156,
-      specializations: ["CBT", "Trauma", "Sleep Disorders"],
-      availability: "Available next week",
-      bio: "Experienced therapist specializing in trauma-informed care and cognitive behavioral therapy.",
-    },
-    {
-      id: 4,
-      name: "Dr. James Martinez",
-      specialty: "Clinical Psychologist",
-      experience: "8 years",
-      rating: 4.7,
-      reviews: 84,
-      specializations: ["Relationship Issues", "Family Therapy", "Stress"],
-      availability: "Available this week",
-      bio: "Focused on relationship counseling and family therapy with a holistic approach.",
-    },
-  ]
+  const filteredDoctors = useMemo(() => {
+    const lowerQuery = searchQuery.toLowerCase()
+    return doctors.filter((doctor) => {
+      const matchesSearch = doctor.name.toLowerCase().includes(lowerQuery)
+      const matchesSpecialty = specialty === "all" || doctor.specialties.includes(specialty)
+      return matchesSearch && matchesSpecialty
+    })
+  }, [doctors, searchQuery, specialty])
 
-  const filteredDoctors = doctors.filter((doctor) => {
-    const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesSpecialty = specialty === "all" || doctor.specialty === specialty
-    return matchesSearch && matchesSpecialty
-  })
+  const specialties = useMemo(() => {
+    const unique = new Set<string>()
+    doctors.forEach((doctor) => doctor.specialties.forEach((spec) => unique.add(spec)))
+    return Array.from(unique)
+  }, [doctors])
 
   return (
     <DashboardLayout>
@@ -92,68 +119,82 @@ export default function FindDoctorsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Specialties</SelectItem>
-              <SelectItem value="Clinical Psychologist">Clinical Psychologist</SelectItem>
-              <SelectItem value="Psychiatrist">Psychiatrist</SelectItem>
-              <SelectItem value="Licensed Therapist">Licensed Therapist</SelectItem>
+              {specialties.map((spec) => (
+                <SelectItem key={spec} value={spec}>
+                  {spec}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
         {/* Results Count */}
         <p className="text-sm text-muted-foreground">
-          Showing {filteredDoctors.length} {filteredDoctors.length === 1 ? "doctor" : "doctors"}
+          {isLoading ? "Loading doctors..." : `Showing ${filteredDoctors.length} ${filteredDoctors.length === 1 ? "doctor" : "doctors"}`}
         </p>
 
         {/* Doctor List */}
         <div className="space-y-4">
-          {filteredDoctors.map((doctor) => (
-            <Card key={doctor.id} className="transition-shadow hover:shadow-lg">
-              <CardContent className="pt-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                  <div className="flex gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="mb-1 flex items-center gap-2">
-                        <h3 className="text-xl font-semibold">{doctor.name}</h3>
-                        <Badge variant="secondary">{doctor.availability}</Badge>
+          {isLoading ? (
+            <div className="py-10 text-center text-muted-foreground">Loading doctors...</div>
+          ) : filteredDoctors.length === 0 ? (
+            <div className="py-10 text-center text-muted-foreground">No doctors found</div>
+          ) : (
+            filteredDoctors.map((doctor) => (
+              <Card key={doctor.id} className="transition-shadow hover:shadow-lg">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex gap-4">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                        <User className="h-8 w-8 text-primary" />
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {doctor.specialty} • {doctor.experience} experience
-                      </p>
-                      <div className="mt-2 flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-accent text-accent" />
-                          <span className="font-medium">{doctor.rating}</span>
-                          <span className="text-muted-foreground">({doctor.reviews} reviews)</span>
+                      <div className="flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <h3 className="text-xl font-semibold">{doctor.name}</h3>
+                          <Badge variant="secondary">{doctor.specialties[0] ?? "Mental Health"}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {doctor.experienceYears ? `${doctor.experienceYears} years experience` : "Experience not provided"}
+                        </p>
+                        <div className="mt-2 flex items-center gap-4 text-sm">
+                          {doctor.rating && (
+                            <div className="flex items-center gap-1">
+                              <Star className="h-4 w-4 fill-accent text-accent" />
+                              <span className="font-medium">{doctor.rating.toFixed(1)}</span>
+                              {doctor.reviewsCount && (
+                                <span className="text-muted-foreground">({doctor.reviewsCount} reviews)</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {doctor.bio && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{doctor.bio}</p>}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {doctor.specialties.map((spec) => (
+                            <Badge key={spec} variant="outline">
+                              {spec}
+                            </Badge>
+                          ))}
+                          {doctor.offersVideo && <Badge variant="outline">Video sessions</Badge>}
+                          {doctor.offersInPerson && <Badge variant="outline">In-person sessions</Badge>}
                         </div>
                       </div>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{doctor.bio}</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {doctor.specializations.map((spec) => (
-                          <Badge key={spec} variant="outline">
-                            {spec}
-                          </Badge>
-                        ))}
-                      </div>
+                    </div>
+                    <div className="flex gap-2 md:flex-col">
+                      <Button asChild className="flex-1">
+                        <Link href={`/book-appointment?doctor=${doctor.id}`}>
+                          Book Now
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" className="flex-1 bg-transparent">
+                        <Link href={`/doctors/${doctor.id}`}>View Profile</Link>
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2 md:flex-col">
-                    <Button asChild className="flex-1">
-                      <Link href={`/book-appointment?doctor=${doctor.id}`}>
-                        Book Now
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1 bg-transparent">
-                      <Link href={`/doctors/${doctor.id}`}>View Profile</Link>
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </DashboardLayout>

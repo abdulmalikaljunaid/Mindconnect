@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { analyzeSymptoms } from "@/lib/ai/gemini"
-import { matchDoctors } from "@/lib/doctors"
+import { findBestMatchingDoctors } from "@/lib/doctors"
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
     // تحليل الأعراض باستخدام Gemini AI
     const assessment = await analyzeSymptoms(symptoms.trim())
     
-    // مطابقة الأطباء بناءً على التخصصات المقترحة
-    const doctors = matchDoctors(assessment.recommendedSpecialties)
+    // مطابقة الأطباء بناءً على التخصصات المقترحة من قاعدة البيانات
+    const doctors = await findBestMatchingDoctors(assessment.recommendedSpecialties)
     
     return NextResponse.json({
       success: true,

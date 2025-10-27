@@ -1,36 +1,55 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { authService, type User, type AuthState } from "@/lib/auth"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { authService, type UserProfile } from "@/lib/auth"
 
-interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string, userType: "user" | "doctor") => Promise<void>
-  signUp: (email: string, password: string, name: string, role: "patient" | "doctor" | "companion") => Promise<void>
-  signOut: () => Promise<void>
+interface AuthContextType {
+  user: UserProfile | null
+  isAuthenticated: boolean
   isLoading: boolean
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, name: string, role: UserProfile["role"]) => Promise<void>
+  signOut: () => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing user on mount
-    const currentUser = authService.getCurrentUser()
-    setUser(currentUser)
-    setIsLoading(false)
+    const init = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser()
+        setUser(currentUser)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    init()
+
+    const { data: listener } = authService.supabase.auth.onAuthStateChange(async () => {
+      const currentUser = await authService.getCurrentUser()
+      setUser(currentUser)
+    })
+
+    return () => {
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
-  const signIn = async (email: string, password: string, userType: "user" | "doctor") => {
-    const user = await authService.signIn(email, password, userType)
-    setUser(user)
+  const signIn = async (email: string, password: string) => {
+    await authService.signIn(email, password)
+    const currentUser = await authService.getCurrentUser()
+    setUser(currentUser)
   }
 
-  const signUp = async (email: string, password: string, name: string, role: "patient" | "doctor" | "companion") => {
-    const user = await authService.signUp(email, password, name, role)
-    setUser(user)
+  const signUp = async (email: string, password: string, name: string, role: UserProfile["role"]) => {
+    await authService.signUp(email, password, name, role)
+    const currentUser = await authService.getCurrentUser()
+    setUser(currentUser)
   }
 
   const signOut = async () => {
@@ -38,15 +57,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  const refreshUser = async () => {
+    const currentUser = await authService.getCurrentUser()
+    setUser(currentUser)
+  }
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
+        isLoading,
         signIn,
         signUp,
         signOut,
-        isLoading,
+        refreshUser,
       }}
     >
       {children}
@@ -56,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context

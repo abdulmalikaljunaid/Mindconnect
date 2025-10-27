@@ -1,105 +1,137 @@
-export type UserRole = "patient" | "doctor" | "companion" | "admin"
+import { supabaseClient } from "@/lib/supabase-client"
+import type { Session, User as SupabaseUser } from "@supabase/supabase-js"
+import type { Enums, Tables } from "@/lib/database.types"
 
-export interface User {
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const waitForProfile = async (userId: string, attempts = 5): Promise<Tables<"profiles"> | null> => {
+  for (let i = 0; i < attempts; i++) {
+    const { data, error } = await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle()
+
+    if (error) throw error
+    if (data) return data
+
+    await delay(200 * (i + 1))
+  }
+
+  return null
+}
+
+export type UserRole = Enums<"role_type">
+
+export interface UserProfile {
   id: string
   email: string
   name: string
   role: UserRole
-  approved?: boolean
+  phone?: string | null
+  avatarUrl?: string | null
+  bio?: string | null
+  isApproved: boolean
   createdAt: string
 }
 
 export interface AuthState {
-  user: User | null
+  user: UserProfile | null
+  session: Session | null
   isAuthenticated: boolean
 }
 
-// Mock auth functions - replace with real backend integration
+const mapProfile = (authUser: SupabaseUser, profile: any): UserProfile => ({
+  id: authUser.id,
+  email: authUser.email ?? "",
+  name: profile?.name ?? authUser.user_metadata?.name ?? "",
+  role: profile?.role ?? authUser.user_metadata?.role ?? "patient",
+  phone: profile?.phone ?? authUser.user_metadata?.phone,
+  avatarUrl: profile?.avatar_url ?? authUser.user_metadata?.avatar_url,
+  bio: profile?.bio ?? null,
+  isApproved: profile?.is_approved ?? false,
+  createdAt: profile?.created_at ?? authUser.created_at ?? new Date().toISOString(),
+})
+
 export const authService = {
-  async signUp(email: string, password: string, name: string, role: UserRole): Promise<User> {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
+  supabase: supabaseClient,
+  async signUp(email: string, password: string, name: string, role: UserRole) {
+    // منع إنشاء حسابات إدارية من خلال الواجهة العامة
+    if (role === "admin") {
+      throw new Error("Admin accounts cannot be created through public registration")
+    }
 
-    const user: User = {
-      id: Math.random().toString(36).substring(7),
+    const { data, error } = await supabaseClient.auth.signUp({
       email,
-      name,
-      role,
-      approved: role !== "doctor", // Doctors need approval
-      createdAt: new Date().toISOString(),
+      password,
+      options: {
+        data: { name, role },
+      },
+    })
+
+    if (error || !data.user) {
+      throw error ?? new Error("فشل إنشاء الحساب")
     }
 
-    // Store user in users collection
-    const users = this.getAllUsers()
-    users[user.id] = user
-    localStorage.setItem("users", JSON.stringify(users))
-    
-    // Set as current user
-    localStorage.setItem("currentUser", JSON.stringify(user))
-    return user
+    await waitForProfile(data.user.id)
+
+    return this.getCurrentUser()
   },
 
-  async signIn(email: string, password: string, userType: "user" | "doctor"): Promise<User> {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Get all users
-    const users = this.getAllUsers()
-    
-    // Find user by email
-    const user = Object.values(users).find(u => u.email === email)
-    
-    if (user) {
-      // Check if user type matches
-      const isDoctor = user.role === "doctor" || user.role === "admin"
-      const isUser = user.role === "patient" || user.role === "companion"
-      
-      if ((userType === "doctor" && !isDoctor) || (userType === "user" && !isUser)) {
-        throw new Error("نوع الحساب غير صحيح")
-      }
-      
-      // Set as current user
-      localStorage.setItem("currentUser", JSON.stringify(user))
-      return user
-    }
-
-    // If no user found, create a demo user based on type
-    const role = userType === "doctor" ? "doctor" : "patient"
-    const newUser: User = {
-      id: Math.random().toString(36).substring(7),
+  async signIn(email: string, password: string) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
       email,
-      name: email.split("@")[0],
-      role,
-      approved: role !== "doctor",
-      createdAt: new Date().toISOString(),
+      password,
+    })
+
+    if (error || !data.user) {
+      throw error ?? new Error("فشل تسجيل الدخول")
     }
 
-    // Store in users collection
-    users[newUser.id] = newUser
-    localStorage.setItem("users", JSON.stringify(users))
-    localStorage.setItem("currentUser", JSON.stringify(newUser))
-    return newUser
+    return this.getCurrentUser()
   },
 
-  async signOut(): Promise<void> {
-    localStorage.removeItem("currentUser")
+  async signOut() {
+    const { error } = await supabaseClient.auth.signOut()
+    if (error) throw error
   },
 
-  getCurrentUser(): User | null {
-    if (typeof window === "undefined") return null
-    const storedUser = localStorage.getItem("currentUser")
-    return storedUser ? JSON.parse(storedUser) : null
+  async getCurrentUser(): Promise<AuthState["user"]> {
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser()
+
+    if (!user) return null
+
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    return mapProfile(user, profile)
   },
 
-  getAllUsers(): Record<string, User> {
-    if (typeof window === "undefined") return {}
-    const storedUsers = localStorage.getItem("users")
-    return storedUsers ? JSON.parse(storedUsers) : {}
+  async getSession(): Promise<Session | null> {
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession()
+    return session
   },
 
-  // Helper method to check if user exists
-  async checkUserExists(email: string): Promise<boolean> {
-    const users = this.getAllUsers()
-    return Object.values(users).some(u => u.email === email)
+  async updateProfile(updates: Partial<UserProfile>) {
+    if (!updates.id) throw new Error("User ID required")
+    const { error } = await supabaseClient
+      .from("profiles")
+      .update({
+        name: updates.name,
+        phone: updates.phone,
+        avatar_url: updates.avatarUrl,
+        bio: updates.bio,
+      })
+      .eq("id", updates.id)
+
+    if (error) throw error
+    return this.getCurrentUser()
   },
 }

@@ -28,7 +28,7 @@ export default function UserLoginPage() {
     setIsLoading(true)
 
     try {
-      await signIn(email, password, "user")
+      await signIn(email, password)
       router.push("/dashboard")
     } catch (err) {
       setError("البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.")

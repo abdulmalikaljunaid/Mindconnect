@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
-import { AlertCircle, Stethoscope, Shield } from "lucide-react"
+import { AlertCircle, Stethoscope } from "lucide-react"
 
 export default function DoctorLoginPage() {
   const [email, setEmail] = useState("")
@@ -28,7 +28,7 @@ export default function DoctorLoginPage() {
     setIsLoading(true)
 
     try {
-      await signIn(email, password, "doctor")
+      await signIn(email, password)
       router.push("/dashboard")
     } catch (err) {
       setError("البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.")
