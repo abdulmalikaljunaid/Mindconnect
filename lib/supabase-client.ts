@@ -1,20 +1,27 @@
 "use client"
 
 import { createBrowserClient, createServerClient } from "@supabase/ssr"
-
 import type { cookies } from "next/headers"
 
 import type { Database } from "./database.types"
 
-export const supabaseClient = createBrowserClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl) {
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
+}
+
+if (!supabaseAnonKey) {
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable")
+}
+
+export const supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 
 export const createSupabaseServerClient = (cookieStore: ReturnType<typeof cookies>) =>
   createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name) {

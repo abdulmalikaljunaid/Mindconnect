@@ -3,10 +3,18 @@ import type { Metadata } from "next"
 import { AuthProvider } from "@/contexts/auth-context"
 import "./globals.css"
 
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
+}
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable")
+}
+
 export const metadata: Metadata = {
   title: "عناية العقل - دعم الصحة النفسية المهني",
   description: "تواصل مع متخصصين مؤهلين في الصحة النفسية واحصل على الدعم الذي تحتاجه",
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
 export default function RootLayout({
@@ -19,9 +27,9 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&display=swap" 
-          rel="stylesheet" 
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
         />
       </head>
       <body className="font-sans">

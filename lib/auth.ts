@@ -4,7 +4,7 @@ import type { Enums, Tables } from "@/lib/database.types"
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const waitForProfile = async (userId: string, attempts = 5): Promise<Tables<"profiles"> | null> => {
+const waitForProfile = async (userId: string, attempts = 10): Promise<Tables<"profiles"> | null> => {
   for (let i = 0; i < attempts; i++) {
     const { data, error } = await supabaseClient
       .from("profiles")
@@ -73,6 +73,30 @@ export const authService = {
 
     if (error || !data.user) {
       throw error ?? new Error("فشل إنشاء الحساب")
+    }
+
+    try {
+      const response = await fetch("/api/auth/confirm-signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: data.user.id, email }),
+      })
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        console.warn("Failed to auto-confirm signup", result)
+      }
+    } catch (err) {
+      console.warn("Auto-confirm signup request failed", err)
+    }
+
+    const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (signInError) {
+      throw signInError
     }
 
     await waitForProfile(data.user.id)

@@ -1,17 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import { User, Search, Star, ArrowRight, BookOpen } from "lucide-react"
+
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Search, Star, ArrowRight } from "lucide-react"
-import Link from "next/link"
-import { useAdminDoctors } from "@/hooks/use-doctors"
-import { useEffect, useMemo } from "react"
 import { supabaseClient } from "@/lib/supabase-client"
+import { useToast } from "@/components/ui/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface DoctorWithDetails {
   id: string
@@ -25,9 +26,47 @@ interface DoctorWithDetails {
   bio: string | null
 }
 
+const FALLBACK_DOCTORS: DoctorWithDetails[] = [
+  {
+    id: "doc-1",
+    name: "Dr. Sarah Williams",
+    specialties: ["Anxiety", "Depression", "Stress Management"],
+    experienceYears: 15,
+    rating: 4.9,
+    reviewsCount: 127,
+    offersVideo: true,
+    offersInPerson: true,
+    bio: "أخصائية نفسية إكلينيكية متخصصة في علاج اضطرابات القلق والاكتئاب وإدارة التوتر.",
+  },
+  {
+    id: "doc-2",
+    name: "Dr. Michael Chen",
+    specialties: ["Mood Disorders", "Medication Management", "Anxiety"],
+    experienceYears: 12,
+    rating: 4.8,
+    reviewsCount: 98,
+    offersVideo: true,
+    offersInPerson: false,
+    bio: "طبيب نفسي يوفر خطط علاج دوائية وسلوكية متكاملة لاضطرابات المزاج والقلق.",
+  },
+  {
+    id: "doc-3",
+    name: "Dr. Emily Thompson",
+    specialties: ["CBT", "Trauma", "Sleep Disorders"],
+    experienceYears: 10,
+    rating: 4.9,
+    reviewsCount: 156,
+    offersVideo: true,
+    offersInPerson: true,
+    bio: "معالجة مرخّصة تقدم العلاج المعرفي السلوكي والتركيز على الصدمات واضطرابات النوم.",
+  },
+]
+
 const useFindDoctors = () => {
   const [doctors, setDoctors] = useState<DoctorWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     const fetchDoctors = async () => {
@@ -42,28 +81,47 @@ const useFindDoctors = () => {
           offers_in_person,
           metadata,
           profile:profiles(name, bio, is_approved),
-          doctor_specialties(speciality:specialties(name))
+          doctor_specialties(specialties(name))
         `,
         )
         .eq("profile.is_approved", true)
 
       if (error) {
-        console.error(error)
-        setDoctors([])
+        console.error("Failed to fetch doctors", error)
+        setError("تعذر تحميل قائمة الأطباء. تم عرض قائمة افتراضية مؤقتاً.")
+        toast({
+          variant: "destructive",
+          title: "تعذر تحميل الأطباء",
+          description: "تم استخدام قائمة أطباء افتراضية مؤقتاً لحين توافر البيانات",
+        })
+        setDoctors(FALLBACK_DOCTORS)
       } else {
-        setDoctors(
-          (data ?? []).map((row) => ({
+        const mapped = (data ?? []).map((row) => ({
             id: row.profile_id,
             name: row.profile?.name ?? "بدون اسم",
-            specialties: (row.doctor_specialties ?? []).map((item) => item.speciality?.name ?? "")?.filter(Boolean),
+            specialties:
+              row.doctor_specialties
+                ?.map((item) => item.specialties?.name ?? "")
+                .filter((name): name is string => Boolean(name)) ?? [],
             experienceYears: row.experience_years ?? null,
             rating: row.metadata?.rating ?? null,
             reviewsCount: row.metadata?.reviews_count ?? null,
             offersVideo: row.offers_video,
             offersInPerson: row.offers_in_person,
             bio: row.profile?.bio ?? row.metadata?.bio ?? null,
-          })),
-        )
+          }))
+
+        if (mapped.length === 0) {
+          setError("لا توجد بيانات أطباء معتمدة حتى الآن. تم عرض قائمة افتراضية مؤقتاً.")
+          toast({
+            title: "قائمة الأطباء فارغة",
+            description: "قم بإتمام إعداد الأطباء في لوحة الإدارة للحصول على نتائج حقيقية",
+          })
+          setDoctors(FALLBACK_DOCTORS)
+        } else {
+          setDoctors(mapped)
+          setError(null)
+        }
       }
       setIsLoading(false)
     }
@@ -71,13 +129,13 @@ const useFindDoctors = () => {
     fetchDoctors()
   }, [])
 
-  return { doctors, isLoading }
+  return { doctors, isLoading, error }
 }
 
 export default function FindDoctorsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [specialty, setSpecialty] = useState("all")
-  const { doctors, isLoading } = useFindDoctors()
+  const { doctors, isLoading, error } = useFindDoctors()
 
   const filteredDoctors = useMemo(() => {
     const lowerQuery = searchQuery.toLowerCase()
@@ -129,9 +187,19 @@ export default function FindDoctorsPage() {
         </div>
 
         {/* Results Count */}
-        <p className="text-sm text-muted-foreground">
-          {isLoading ? "Loading doctors..." : `Showing ${filteredDoctors.length} ${filteredDoctors.length === 1 ? "doctor" : "doctors"}`}
-        </p>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {isLoading
+              ? "Loading doctors..."
+              : `Showing ${filteredDoctors.length} ${filteredDoctors.length === 1 ? "doctor" : "doctors"}`}
+          </p>
+          {error && (
+            <Alert variant="destructive" className="max-w-xl">
+              <AlertTitle>تنبيه</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </div>
 
         {/* Doctor List */}
         <div className="space-y-4">
