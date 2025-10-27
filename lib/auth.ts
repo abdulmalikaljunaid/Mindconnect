@@ -66,6 +66,8 @@ export const authService = {
       password,
       options: {
         data: { name, role },
+        emailRedirectTo:
+          typeof window !== "undefined" ? `${window.location.origin}/auth/callback` : undefined,
       },
     })
 
