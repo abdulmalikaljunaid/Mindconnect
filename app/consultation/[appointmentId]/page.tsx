@@ -90,15 +90,25 @@ export default function ConsultationPage() {
           minutesUntilAppointment <= 10 &&
           minutesUntilAppointment >= -appointment.duration_minutes;
 
+        const doctorRel = Array.isArray(appointment.doctor)
+          ? appointment.doctor[0]
+          : appointment.doctor;
+        const patientRel = Array.isArray(appointment.patient)
+          ? appointment.patient[0]
+          : appointment.patient;
+        const companionRel = Array.isArray(appointment.companion)
+          ? appointment.companion[0]
+          : appointment.companion;
+
         const sessionData: ConsultationSession = {
           appointmentId: appointment.id,
           doctorId: appointment.doctor_id,
-          doctorName: appointment.doctor?.name || "دكتور",
-          doctorAvatar: appointment.doctor?.avatar_url || null,
+          doctorName: doctorRel?.name || "دكتور",
+          doctorAvatar: doctorRel?.avatar_url || null,
           patientId: appointment.patient_id,
-          patientName: appointment.patient?.name || "مريض",
-          patientAvatar: appointment.patient?.avatar_url || null,
-          companionId: appointment.companion_id || null,
+          patientName: patientRel?.name || "مريض",
+          patientAvatar: patientRel?.avatar_url || null,
+          companionId: companionRel?.id ?? appointment.companion_id ?? null,
           mode: appointment.mode,
           status: appointment.status,
           scheduledAt: appointment.scheduled_at,
