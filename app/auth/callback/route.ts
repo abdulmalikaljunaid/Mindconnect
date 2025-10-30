@@ -84,7 +84,7 @@ export async function GET(request: Request) {
 
       const { error: insertError } = await supabase
         .from("profiles" as const)
-        .insert([newProfile] as Database['public']['Tables']['profiles']['Insert'][])
+        .insert([newProfile] as any)
 
       if (insertError) {
         console.error("Error creating profile:", insertError)
