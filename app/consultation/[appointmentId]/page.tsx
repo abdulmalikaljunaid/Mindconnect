@@ -136,7 +136,7 @@ export default function ConsultationPage() {
     const sendWelcomeMessage = async () => {
       // جلب عدد الرسائل الحالية للتأكد من أنها الأولى
       const { count } = await supabaseClient
-        .from("consultation_messages")
+        .from("messages" as const)
         .select("*", { count: "exact", head: true })
         .eq("appointment_id", appointmentId);
 
@@ -151,7 +151,7 @@ export default function ConsultationPage() {
             ? "مرحباً! يمكنك الآن التواصل مع الدكتور عبر الرسائل."
             : "مرحباً! يمكنك التنسيق مع الدكتور حول الزيارة الحضورية.";
 
-        await supabaseClient.from("consultation_messages").insert({
+        await supabaseClient.from("messages" as const).insert({
           appointment_id: appointmentId,
           sender_id: user.id,
           message: welcomeText,
