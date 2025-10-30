@@ -9,21 +9,21 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!supabaseUrl) {
-  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
+  console.warn("Warning: NEXT_PUBLIC_SUPABASE_URL is not set")
 }
 
 if (!supabaseAnonKey) {
-  throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable")
+  console.warn("Warning: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set")
 }
 
-export const supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabaseClient = createBrowserClient<Database>(supabaseUrl as string, supabaseAnonKey as string)
 
 export const createSupabaseServerClient = (
   cookieStore: Awaited<ReturnType<typeof cookies>>
 ) =>
   createServerClient<Database>(
-    supabaseUrl,
-    supabaseAnonKey,
+    supabaseUrl as string,
+    supabaseAnonKey as string,
     {
       cookies: {
         get(name: string) {

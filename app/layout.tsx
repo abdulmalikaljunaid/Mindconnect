@@ -5,11 +5,11 @@ import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
+  console.warn("Warning: NEXT_PUBLIC_SUPABASE_URL is not set")
 }
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable")
+  console.warn("Warning: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set")
 }
 
 export const metadata: Metadata = {

@@ -15,7 +15,7 @@ if (!supabaseAnonKey) {
 }
 
 export function createSupabaseServerClient(cookieStore: Awaited<ReturnType<typeof cookies>>) {
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<Database>(supabaseUrl as string, supabaseAnonKey as string, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value
@@ -39,6 +39,7 @@ export function createSupabaseServerClient(cookieStore: Awaited<ReturnType<typeo
     },
   })
 }
+
 
 
 
