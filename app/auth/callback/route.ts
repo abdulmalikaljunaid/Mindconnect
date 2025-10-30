@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 
     // Check if profile exists
     const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+      .from("profiles" as const)
       .select("*")
       .eq("id", data.user.id)
       .maybeSingle()
