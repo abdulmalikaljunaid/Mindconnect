@@ -118,7 +118,7 @@ export function SpecialtySelector({
             <CommandEmpty>
               {isLoading ? (
                 <div className="flex items-center justify-center p-4">
-                  <Spinner size="sm" />
+                  <Spinner className="h-4 w-4" />
                   <span className="mr-2">جاري التحميل...</span>
                 </div>
               ) : (
@@ -226,7 +226,7 @@ export function SpecialtySelector({
               onClick={handleAddCustom}
               disabled={!customName.trim() || isAddingCustom}
             >
-              {isAddingCustom && <Spinner className="ml-2" size="sm" />}
+              {isAddingCustom && <Spinner className="ml-2 h-4 w-4" />}
               إضافة
             </Button>
           </DialogFooter>
