@@ -45,10 +45,14 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
     try {
       // جلب الرسائل مع معلومات المرسل
       const { data, error: fetchError } = await supabaseClient
-        .from("consultation_messages")
+        .from("messages" as const)
         .select(
           `
-          *,
+          id,
+          appointment_id,
+          sender_id,
+          body,
+          created_at,
           sender:profiles!sender_id (
             id,
             name,
@@ -67,9 +71,9 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
         id: msg.id,
         appointment_id: msg.appointment_id,
         sender_id: msg.sender_id,
-        message: msg.message,
-        message_type: msg.message_type,
-        is_read: msg.is_read,
+        message: msg.body,
+        message_type: "text",
+        is_read: false,
         created_at: msg.created_at,
         sender: msg.sender
           ? {
@@ -102,16 +106,14 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
       }
 
       try {
-        const newMessage: ConsultationMessageInsert = {
+        const newMessage: { appointment_id: string; sender_id: string; body: string } = {
           appointment_id: appointmentId,
           sender_id: user.id,
-          message: message.trim(),
-          message_type: messageType,
-          is_read: false,
+          body: message.trim(),
         };
 
         const { error: insertError } = await supabaseClient
-          .from("consultation_messages")
+          .from("messages" as const)
           .insert(newMessage);
 
         if (insertError) throw insertError;
@@ -136,17 +138,8 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
     async (messageIds: string[]) => {
       if (!messageIds.length || !user) return;
 
-      try {
-        const { error } = await supabaseClient
-          .from("consultation_messages")
-          .update({ is_read: true })
-          .in("id", messageIds)
-          .neq("sender_id", user.id); // لا نحدّث حالة القراءة للرسائل التي أرسلناها
-
-        if (error) throw error;
-      } catch (err: any) {
-        console.error("Error marking messages as read:", err);
-      }
+      // مخطط الرسائل الحالي لا يحتوي على حقل is_read؛ لا توجد عملية مطلوبة
+      return;
     },
     [user]
   );
@@ -176,7 +169,7 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
         {
           event: "*",
           schema: "public",
-          table: "consultation_messages",
+          table: "messages",
           filter: `appointment_id=eq.${appointmentId}`,
         },
         async (payload) => {
@@ -194,9 +187,9 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
               id: payload.new.id,
               appointment_id: payload.new.appointment_id,
               sender_id: payload.new.sender_id,
-              message: payload.new.message,
-              message_type: payload.new.message_type,
-              is_read: payload.new.is_read,
+              message: payload.new.body,
+              message_type: "text",
+              is_read: false,
               created_at: payload.new.created_at,
               sender: sender
                 ? {
@@ -209,18 +202,12 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
             };
 
             setMessages((prev) => [...prev, newMessage]);
-
-            // إذا كانت الرسالة ليست من المستخدم الحالي، نحدّث حالة القراءة
-            if (payload.new.sender_id !== user?.id) {
-              markAsRead([payload.new.id]);
-            }
+            // لا يوجد تحديث لحالة القراءة في المخطط الحالي
           } else if (payload.eventType === "UPDATE") {
             // تحديث رسالة موجودة (مثل تحديث حالة القراءة)
             setMessages((prev) =>
               prev.map((msg) =>
-                msg.id === payload.new.id
-                  ? { ...msg, is_read: payload.new.is_read, message: payload.new.message }
-                  : msg
+                msg.id === payload.new.id ? { ...msg, message: payload.new.body } : msg
               )
             );
           } else if (payload.eventType === "DELETE") {
