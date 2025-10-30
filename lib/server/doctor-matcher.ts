@@ -3,16 +3,16 @@ import type { Tables } from "@/lib/database.types"
 import type { Doctor, DoctorMatch, Specialty } from "@/types/assessment"
 
 const SPECIALTIES: Specialty[] = [
-  "ADHD",
-  "Depression",
-  "Anxiety",
-  "Bipolar",
-  "OCD",
-  "PTSD",
-  "Eating_Disorders",
-  "Sleep_Disorders",
-  "Addiction",
-  "General_Psychiatry",
+  "general-psychiatry",
+  "depression-anxiety",
+  "child-adolescent",
+  "addiction-treatment",
+  "eating-disorders",
+  "psychotic-disorders",
+  "family-couples-therapy",
+  "sleep-disorders",
+  "trauma-ptsd",
+  "cognitive-behavioral",
 ]
 
 type DoctorProfileRow = Tables<"doctor_profiles"> & {
@@ -34,22 +34,23 @@ type DoctorProfileRow = Tables<"doctor_profiles"> & {
 }
 
 const specialtyDisplayMap: Record<Specialty, string> = {
-  ADHD: "ADHD",
-  Depression: "Depression",
-  Anxiety: "Anxiety",
-  Bipolar: "Bipolar",
-  OCD: "OCD",
-  PTSD: "PTSD",
-  Eating_Disorders: "Eating_Disorders",
-  Sleep_Disorders: "Sleep_Disorders",
-  Addiction: "Addiction",
-  General_Psychiatry: "General_Psychiatry",
+  "general-psychiatry": "General Psychiatry",
+  "depression-anxiety": "Depression & Anxiety",
+  "child-adolescent": "Child & Adolescent",
+  "addiction-treatment": "Addiction Treatment",
+  "eating-disorders": "Eating Disorders",
+  "psychotic-disorders": "Psychotic Disorders",
+  "family-couples-therapy": "Family & Couples Therapy",
+  "sleep-disorders": "Sleep Disorders",
+  "trauma-ptsd": "Trauma & PTSD",
+  "cognitive-behavioral": "Cognitive Behavioral",
 }
 
 function normalizeSpecialty(value: string | null): Specialty | null {
   if (!value) return null
 
-  const normalized = value.replace(/[-\s]/g, "_").toLowerCase()
+  // Normalize to kebab-case for comparison
+  const normalized = value.toLowerCase().trim().replace(/[\s_]+/g, "-")
   return SPECIALTIES.find((spec) => spec.toLowerCase() === normalized) ?? null
 }
 
@@ -68,7 +69,7 @@ function buildDoctor(row: DoctorProfileRow): Doctor | null {
     id: row.profile_id,
     name: row.profile.name,
     nameAr: metadata.nameAr ?? row.profile.name,
-    specialties: specialties.length > 0 ? specialties : ["General_Psychiatry"],
+    specialties: specialties.length > 0 ? specialties : ["general-psychiatry"],
     experience: row.experience_years ?? metadata.experience ?? 0,
     rating: metadata.rating ?? 0,
     avatar: row.profile.avatar_url ?? metadata.avatar ?? "/placeholder-user.jpg",
