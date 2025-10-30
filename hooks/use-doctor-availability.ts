@@ -137,6 +137,10 @@ export function useDoctorAvailability(doctorId?: string) {
       const slots: TimeSlot[] = [];
 
       // التحقق من المواعيد المحجوزة في هذا اليوم
+      if (!doctorId) {
+        return slots;
+      }
+
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
