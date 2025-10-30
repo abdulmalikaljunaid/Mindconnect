@@ -227,10 +227,10 @@ export default function BookAppointmentPage() {
                       in_person: doctor.offersInPerson ?? false,
                     }}
                     fees={{
-                      video: doctor.videoConsultationFee,
-                      audio: doctor.audioConsultationFee,
-                      messaging: doctor.messagingConsultationFee,
-                      in_person: doctor.inPersonConsultationFee,
+                      video: doctor.videoConsultationFee ?? null,
+                      audio: doctor.audioConsultationFee ?? null,
+                      messaging: doctor.messagingConsultationFee ?? null,
+                      in_person: doctor.inPersonConsultationFee ?? null,
                     }}
                     selectedMode={selectedMode}
                     onSelectMode={setSelectedMode}
