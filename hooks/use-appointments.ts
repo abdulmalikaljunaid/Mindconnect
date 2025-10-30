@@ -60,9 +60,25 @@ const APPOINTMENT_SELECT = `
   companion_id
 `
 
-type RawAppointment = Tables<"appointments">
+type SelectedAppointment = Pick<
+  Tables<"appointments">,
+  | "id"
+  | "scheduled_at"
+  | "duration_minutes"
+  | "status"
+  | "mode"
+  | "reason"
+  | "notes"
+  | "consultation_fee"
+  | "rejection_reason"
+  | "confirmed_at"
+  | "cancelled_at"
+  | "doctor_id"
+  | "patient_id"
+  | "companion_id"
+>
 
-const mapAppointment = async (row: RawAppointment): Promise<AppointmentListItem> => {
+const mapAppointment = async (row: SelectedAppointment): Promise<AppointmentListItem> => {
   // Fetch related names separately to avoid embedding issues
   let doctorName: string | null = null
   let patientName: string | null = null
