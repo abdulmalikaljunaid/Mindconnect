@@ -33,6 +33,29 @@ type DoctorProfileRow = Tables<"doctor_profiles"> & {
   }> | null
 }
 
+// Type for selected columns only (matches the query in findBestMatchingDoctors)
+type SelectedDoctorProfileRow = {
+  profile_id: string
+  experience_years: number | null
+  languages: string[] | null
+  metadata: Tables<"doctor_profiles">["metadata"]
+  profile: {
+    id: string
+    name: string
+    avatar_url: string | null
+    bio: string | null
+    is_approved: boolean | null
+    role?: string | null
+  } | null
+  doctor_specialties: Array<{
+    specialties: {
+      id: string
+      name: string
+      slug: string
+    } | null
+  }> | null
+}
+
 const specialtyDisplayMap: Record<Specialty, string> = {
   "general-psychiatry": "General Psychiatry",
   "depression-anxiety": "Depression & Anxiety",
@@ -54,7 +77,7 @@ function normalizeSpecialty(value: string | null): Specialty | null {
   return SPECIALTIES.find((spec) => spec.toLowerCase() === normalized) ?? null
 }
 
-function buildDoctor(row: DoctorProfileRow): Doctor | null {
+function buildDoctor(row: DoctorProfileRow | SelectedDoctorProfileRow): Doctor | null {
   if (!row.profile || row.profile.role !== "doctor" || !row.profile.is_approved) {
     return null
   }
@@ -110,7 +133,7 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
       experience_years,
       languages,
       metadata,
-      profile:profiles (id, name, avatar_url, bio, is_approved, role),
+      profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved, role),
       doctor_specialties (
         specialties (id, name, slug)
       )
@@ -122,7 +145,7 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
     return []
   }
 
-  const doctors = (data as DoctorProfileRow[])
+  const doctors = (data as SelectedDoctorProfileRow[])
     .map(buildDoctor)
     .filter((doctor): doctor is Doctor => Boolean(doctor))
 
@@ -150,7 +173,7 @@ export async function fetchDoctorById(id: string): Promise<Doctor | null> {
       experience_years,
       languages,
       metadata,
-      profile:profiles (id, name, avatar_url, bio, is_approved, role),
+      profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved, role),
       doctor_specialties (
         specialties (id, name, slug)
       )
@@ -164,7 +187,7 @@ export async function fetchDoctorById(id: string): Promise<Doctor | null> {
     return null
   }
 
-  return buildDoctor(data as DoctorProfileRow)
+  return buildDoctor(data as SelectedDoctorProfileRow)
 }
 
 export async function fetchApprovedDoctors(): Promise<Doctor[]> {
@@ -178,7 +201,7 @@ export async function fetchApprovedDoctors(): Promise<Doctor[]> {
       experience_years,
       languages,
       metadata,
-      profile:profiles (id, name, avatar_url, bio, is_approved, role),
+      profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved, role),
       doctor_specialties (
         specialties (id, name, slug)
       )
@@ -190,7 +213,7 @@ export async function fetchApprovedDoctors(): Promise<Doctor[]> {
     return []
   }
 
-  return (data as DoctorProfileRow[])
+  return (data as SelectedDoctorProfileRow[])
     .map(buildDoctor)
     .filter((doctor): doctor is Doctor => Boolean(doctor))
 }
