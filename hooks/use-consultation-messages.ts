@@ -75,12 +75,12 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
         message_type: "text",
         is_read: false,
         created_at: msg.created_at,
-        sender: msg.sender
+        sender: msg.sender && msg.sender.role !== "admin"
           ? {
               id: msg.sender.id,
               name: msg.sender.name,
               avatar_url: msg.sender.avatar_url,
-              role: msg.sender.role,
+              role: msg.sender.role as "patient" | "doctor" | "companion",
             }
           : undefined,
       }));
@@ -191,12 +191,12 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
               message_type: "text",
               is_read: false,
               created_at: payload.new.created_at,
-              sender: sender
+              sender: sender && sender.role !== "admin"
                 ? {
                     id: sender.id,
                     name: sender.name,
                     avatar_url: sender.avatar_url,
-                    role: sender.role,
+                    role: sender.role as "patient" | "doctor" | "companion",
                   }
                 : undefined,
             };
