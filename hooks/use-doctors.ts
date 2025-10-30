@@ -179,7 +179,11 @@ const upsertDoctorMetadata = async (profileId: string, updater: (metadata: Recor
   } else {
     const { error } = await supabaseClient
       .from("doctor_profiles")
-      .insert({ profile_id: profileId, metadata: newMetadata })
+      .insert({ 
+        profile_id: profileId, 
+        metadata: newMetadata,
+        license_number: "" // Required field, will be updated when doctor submits profile
+      })
 
     if (error) throw error
   }
