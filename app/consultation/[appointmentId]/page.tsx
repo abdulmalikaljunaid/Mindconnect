@@ -154,9 +154,7 @@ export default function ConsultationPage() {
         await supabaseClient.from("messages" as const).insert({
           appointment_id: appointmentId,
           sender_id: user.id,
-          message: welcomeText,
-          message_type: "system",
-          is_read: false,
+          body: welcomeText,
         });
       }
     };
