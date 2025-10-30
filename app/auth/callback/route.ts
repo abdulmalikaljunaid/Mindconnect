@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     const { data: profile, error: profileError } = await supabase
       .from("profiles" as const)
       .select("*")
-      .eq("id", data.user.id)
+      .match({ id: data.user.id })
       .maybeSingle()
 
     if (profileError && profileError.code !== "PGRST116") {
