@@ -138,16 +138,18 @@ function buildDoctor(row: DoctorProfileRow): Doctor | null {
     ?.map((entry) => normalizeSpecialty(entry.specialties?.slug ?? entry.specialties?.name ?? null))
     .filter((spec): spec is Specialty => Boolean(spec)) ?? []
 
+  const metadata = row.metadata as Record<string, any> | null
+
   return {
     id: row.profile_id,
     name: row.profile.name,
-    nameAr: row.metadata?.nameAr ?? row.profile.name,
+    nameAr: (metadata?.nameAr as string | undefined) ?? row.profile.name,
     specialties,
     experience: row.experience_years ?? 0,
-    rating: row.metadata?.rating ?? 0,
-    avatar: row.profile.avatar_url ?? row.metadata?.avatar ?? "/placeholder-user.jpg",
-    bio: row.profile.bio ?? row.metadata?.bio ?? "",
-    languages: Array.isArray(row.languages) ? row.languages : row.metadata?.languages ?? ["العربية", "الإنجليزية"],
+    rating: (metadata?.rating as number | undefined) ?? 0,
+    avatar: row.profile.avatar_url ?? (metadata?.avatar as string | undefined) ?? "/placeholder-user.jpg",
+    bio: row.profile.bio ?? (metadata?.bio as string | undefined) ?? "",
+    languages: Array.isArray(row.languages) ? row.languages : (metadata?.languages as string[] | undefined) ?? ["العربية", "الإنجليزية"],
   }
 }
 
