@@ -1,4 +1,13 @@
 {
+  "installCommand": "npm install",
+  "buildCommand": "npm run build"
+}
+{
+  "buildCommand": "next build",
+  "installCommand": "npm ci --legacy-peer-deps",
+  "framework": "nextjs"
+}
+{
   "installCommand": "pnpm install --no-frozen-lockfile"
 }
 
