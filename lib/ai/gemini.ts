@@ -66,7 +66,7 @@ export async function analyzeSymptoms(symptoms: string): Promise<AssessmentResul
         severity: "mild",
         description: "يُنصح بمراجعة طبيب نفسي للتقييم الدقيق"
       }],
-      recommendedSpecialties: ["General_Psychiatry"],
+      recommendedSpecialties: ["general-psychiatry"],
       notes: "حدث خطأ في التحليل. يُنصح بمراجعة طبيب نفسي للتقييم الدقيق."
     }
   }
