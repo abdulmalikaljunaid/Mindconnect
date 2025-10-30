@@ -77,6 +77,29 @@ interface DoctorProfileRow extends Tables<"doctor_profiles"> {
     name: string
     avatar_url: string | null
     bio: string | null
+    is_approved: boolean | null
+  } | null
+  doctor_specialties: Array<{
+    specialties: {
+      id: string
+      name: string
+      slug: string
+    } | null
+  }>
+}
+
+// Type for selected columns only (matches the query in findBestMatchingDoctors)
+type SelectedDoctorProfileRow = {
+  profile_id: string
+  experience_years: number | null
+  languages: string[] | null
+  metadata: Tables<"doctor_profiles">["metadata"]
+  profile: {
+    id: string
+    name: string
+    avatar_url: string | null
+    bio: string | null
+    is_approved: boolean | null
   } | null
   doctor_specialties: Array<{
     specialties: {
@@ -131,7 +154,7 @@ function normalizeSpecialty(slug: string | null): Specialty | null {
   return legacyMappings[normalized] || null
 }
 
-function buildDoctor(row: DoctorProfileRow): Doctor | null {
+function buildDoctor(row: DoctorProfileRow | SelectedDoctorProfileRow): Doctor | null {
   if (!row.profile) return null
 
   const specialties = row.doctor_specialties
@@ -210,7 +233,7 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
       throw error
     }
 
-    const doctors = (data as DoctorProfileRow[])
+    const doctors = (data as SelectedDoctorProfileRow[])
       .map(buildDoctor)
       .filter((doc): doc is Doctor => Boolean(doc))
 
@@ -249,7 +272,7 @@ export async function getDoctorById(id: string): Promise<Doctor | null> {
       throw error ?? new Error("Doctor not found")
     }
 
-    return buildDoctor(data as DoctorProfileRow)
+    return buildDoctor(data as SelectedDoctorProfileRow)
   } catch (error) {
     const fallback = FALLBACK_DOCTORS.find((doctor) => doctor.id === id)
     if (!fallback) {
