@@ -15,9 +15,15 @@ export interface DoctorWithProfile {
   licenseNumber?: string | null
   experienceYears?: number | null
   consultationFee?: number | null
-  languages?: string[] | null
+  videoConsultationFee?: number | null
+  audioConsultationFee?: number | null
+  messagingConsultationFee?: number | null
+  inPersonConsultationFee?: number | null
   offersVideo?: boolean | null
+  offersAudio?: boolean | null
+  offersMessaging?: boolean | null
   offersInPerson?: boolean | null
+  languages?: string[] | null
   clinicAddress?: string | null
   specialties: string[]
   phone?: string | null
@@ -26,6 +32,13 @@ export interface DoctorWithProfile {
   approvedAt?: string | null
   rejectedAt?: string | null
   rejectionReason?: string | null
+  // New document fields
+  licenseDocumentUrl?: string | null
+  certificateDocumentUrl?: string | null
+  cvDocumentUrl?: string | null
+  idDocumentUrl?: string | null
+  approvalStatus?: string | null
+  approvalNotes?: string | null
 }
 
 interface DoctorsResult {
@@ -35,7 +48,7 @@ interface DoctorsResult {
   isLoading: boolean
   error: string | null
   approveDoctor: (doctorId: string) => Promise<void>
-  rejectDoctor: (doctorId: string) => Promise<void>
+  rejectDoctor: (doctorId: string, notes?: string) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -46,14 +59,29 @@ const selectQuery = `
   role,
   is_approved,
   created_at,
-  doctor_profiles (
+  doctor_profiles!doctor_profiles_profile_id_fkey (
     license_number,
     experience_years,
     consultation_fee,
-    languages,
+    video_consultation_fee,
+    audio_consultation_fee,
+    messaging_consultation_fee,
+    in_person_consultation_fee,
     offers_video,
+    offers_audio,
+    offers_messaging,
     offers_in_person,
+    languages,
     clinic_address,
+    education,
+    submitted_at,
+    approval_status,
+    approval_notes,
+    approved_at,
+    license_document_url,
+    certificate_document_url,
+    cv_document_url,
+    id_document_url,
     metadata,
     doctor_specialties (
       specialties ( name )
@@ -67,11 +95,24 @@ const mapDoctor = (row: any): DoctorWithProfile => {
   const specialties: string[] =
     doctorProfile?.doctor_specialties?.map((item: any) => item?.specialties?.name).filter(Boolean) ?? []
 
-  const status: DoctorStatus = metadata.status
-    ? metadata.status
-    : row.is_approved
-      ? "approved"
-      : "pending"
+  // Use approval_status from doctor_profiles, fallback to metadata or is_approved
+  // Priority: approval_status > metadata.status > is_approved
+  // BUT: Only use is_approved if approval_status is null/undefined AND doctor_profile exists
+  let approvalStatus: string
+  if (doctorProfile?.approval_status) {
+    // If approval_status is explicitly set, use it
+    approvalStatus = doctorProfile.approval_status
+  } else if (metadata.status) {
+    // Fallback to metadata status
+    approvalStatus = metadata.status
+  } else if (Object.keys(doctorProfile).length === 0) {
+    // No doctor_profile at all, fallback to is_approved
+    approvalStatus = row.is_approved ? "approved" : "pending"
+  } else {
+    // Doctor_profile exists but no approval_status, default to pending
+    approvalStatus = "pending"
+  }
+  const status: DoctorStatus = approvalStatus as DoctorStatus
 
   return {
     id: row.id,
@@ -83,17 +124,30 @@ const mapDoctor = (row: any): DoctorWithProfile => {
     licenseNumber: doctorProfile?.license_number ?? null,
     experienceYears: doctorProfile?.experience_years ?? null,
     consultationFee: doctorProfile?.consultation_fee ?? null,
+    videoConsultationFee: doctorProfile?.video_consultation_fee ?? null,
+    audioConsultationFee: doctorProfile?.audio_consultation_fee ?? null,
+    messagingConsultationFee: doctorProfile?.messaging_consultation_fee ?? null,
+    inPersonConsultationFee: doctorProfile?.in_person_consultation_fee ?? null,
+    offersVideo: doctorProfile?.offers_video ?? true,
+    offersAudio: doctorProfile?.offers_audio ?? true,
+    offersMessaging: doctorProfile?.offers_messaging ?? true,
+    offersInPerson: doctorProfile?.offers_in_person ?? true,
     languages: doctorProfile?.languages ?? null,
-    offersVideo: doctorProfile?.offers_video ?? null,
-    offersInPerson: doctorProfile?.offers_in_person ?? null,
     clinicAddress: doctorProfile?.clinic_address ?? null,
     specialties,
     phone: metadata.phone ?? null,
-    education: metadata.education ?? null,
-    submittedAt: metadata.submitted_at ?? row.created_at ?? null,
-    approvedAt: metadata.approved_at ?? null,
+    education: doctorProfile?.education ?? metadata.education ?? null,
+    submittedAt: doctorProfile?.submitted_at ?? metadata.submitted_at ?? row.created_at ?? null,
+    approvedAt: doctorProfile?.approved_at ?? metadata.approved_at ?? null,
     rejectedAt: metadata.rejected_at ?? null,
     rejectionReason: metadata.rejection_reason ?? null,
+    // New document fields
+    licenseDocumentUrl: doctorProfile?.license_document_url ?? null,
+    certificateDocumentUrl: doctorProfile?.certificate_document_url ?? null,
+    cvDocumentUrl: doctorProfile?.cv_document_url ?? null,
+    idDocumentUrl: doctorProfile?.id_document_url ?? null,
+    approvalStatus: doctorProfile?.approval_status ?? null,
+    approvalNotes: doctorProfile?.approval_notes ?? null,
   }
 }
 
@@ -151,22 +205,57 @@ export function useAdminDoctors(): DoctorsResult {
     setIsLoading(true)
     setError(null)
 
-    const { data, error } = await supabaseClient
-      .from("profiles")
-      .select(selectQuery)
-      .eq("role", "doctor")
-      .order("created_at", { ascending: true })
+    try {
+      // Fetch profiles
+      const { data: profilesData, error: profilesError } = await supabaseClient
+        .from("profiles")
+        .select("id, name, email, role, is_approved, created_at")
+        .eq("role", "doctor")
+        .order("created_at", { ascending: true })
 
-    if (error) {
+      if (profilesError) throw profilesError
+
+      // Fetch doctor_profiles
+      const { data: doctorProfilesData, error: doctorProfilesError } = await supabaseClient
+        .from("doctor_profiles")
+        .select(`
+          profile_id,
+          license_number,
+          experience_years,
+          consultation_fee,
+          languages,
+          offers_video,
+          offers_in_person,
+          clinic_address,
+          education,
+          submitted_at,
+          approval_status,
+          approval_notes,
+          approved_at,
+          license_document_url,
+          certificate_document_url,
+          cv_document_url,
+          id_document_url,
+          metadata
+        `)
+
+      if (doctorProfilesError) throw doctorProfilesError
+
+      // Merge data
+      const doctors = (profilesData ?? []).map((profile: any) => {
+        const doctorProfile = (doctorProfilesData ?? []).find((dp: any) => dp.profile_id === profile.id)
+        return mapDoctor({ ...profile, doctor_profiles: doctorProfile })
+      })
+      
+      setPending(doctors.filter((doctor) => doctor.status === "pending"))
+      setApproved(doctors.filter((doctor) => doctor.status === "approved"))
+      setRejected(doctors.filter((doctor) => doctor.status === "rejected"))
+    } catch (error: any) {
+      console.error('❌ Error fetching doctors:', error)
       setError(error.message)
       setPending([])
       setApproved([])
       setRejected([])
-    } else {
-      const doctors = (data ?? []).map(mapDoctor)
-      setPending(doctors.filter((doctor) => doctor.status === "pending"))
-      setApproved(doctors.filter((doctor) => doctor.status === "approved"))
-      setRejected(doctors.filter((doctor) => doctor.status === "rejected"))
     }
 
     setIsLoading(false)
@@ -179,7 +268,9 @@ export function useAdminDoctors(): DoctorsResult {
 
   const approveDoctor = async (doctorId: string) => {
     const approvedAt = new Date().toISOString()
+    const adminId = user?.id
 
+    // Update profiles table
     const { error: updateProfileError } = await supabaseClient
       .from("profiles")
       .update({ is_approved: true })
@@ -187,6 +278,19 @@ export function useAdminDoctors(): DoctorsResult {
 
     if (updateProfileError) throw updateProfileError
 
+    // Update doctor_profiles table
+    const { error: updateDoctorError } = await supabaseClient
+      .from("doctor_profiles")
+      .update({
+        approval_status: "approved",
+        approved_at: approvedAt,
+        approved_by: adminId,
+      })
+      .eq("profile_id", doctorId)
+
+    if (updateDoctorError) throw updateDoctorError
+
+    // Also update metadata for backward compatibility
     await upsertDoctorMetadata(doctorId, (metadata) => ({
       ...metadata,
       status: "approved",
@@ -198,9 +302,11 @@ export function useAdminDoctors(): DoctorsResult {
     await fetchDoctors()
   }
 
-  const rejectDoctor = async (doctorId: string) => {
+  const rejectDoctor = async (doctorId: string, notes?: string) => {
     const rejectedAt = new Date().toISOString()
+    const adminId = user?.id
 
+    // Update profiles table
     const { error: updateProfileError } = await supabaseClient
       .from("profiles")
       .update({ is_approved: false })
@@ -208,11 +314,24 @@ export function useAdminDoctors(): DoctorsResult {
 
     if (updateProfileError) throw updateProfileError
 
+    // Update doctor_profiles table
+    const { error: updateDoctorError } = await supabaseClient
+      .from("doctor_profiles")
+      .update({
+        approval_status: "rejected",
+        approval_notes: notes ?? "تم رفض الطلب من قبل الإدارة",
+        approved_by: adminId,
+      })
+      .eq("profile_id", doctorId)
+
+    if (updateDoctorError) throw updateDoctorError
+
+    // Also update metadata for backward compatibility
     await upsertDoctorMetadata(doctorId, (metadata) => ({
       ...metadata,
       status: "rejected",
       rejected_at: rejectedAt,
-      rejection_reason: metadata.rejection_reason ?? "Rejected by admin",
+      rejection_reason: notes ?? "Rejected by admin",
     }))
 
     await fetchDoctors()
@@ -227,5 +346,68 @@ export function useAdminDoctors(): DoctorsResult {
     approveDoctor,
     rejectDoctor,
     refresh: fetchDoctors,
+  }
+}
+
+// Hook للمرضى لعرض الأطباء المعتمدين فقط
+// Global cache for approved doctors (shared across all hook instances)
+let globalDoctorsCache: DoctorWithProfile[] | null = null;
+let globalCacheTimestamp: number = 0;
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+export function useApprovedDoctors() {
+  const [approved, setApproved] = useState<DoctorWithProfile[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchApprovedDoctors = async () => {
+    // Return cached data if still valid
+    const now = Date.now();
+    if (globalDoctorsCache && (now - globalCacheTimestamp) < CACHE_DURATION) {
+      setApproved(globalDoctorsCache);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // جلب profiles المعتمدة مع تحسين الاستعلام
+      const { data: profilesData, error: profilesError } = await supabaseClient
+        .from("profiles")
+        .select(selectQuery)
+        .eq("role", "doctor")
+        .eq("is_approved", true)
+        .limit(100) // Limit results for performance
+
+      if (profilesError) throw profilesError
+
+      const doctors = (profilesData ?? []).map(mapDoctor)
+      // فلترة الأطباء المعتمدين فقط
+      const approvedDoctors = doctors.filter((d) => d.status === "approved");
+      
+      // Cache the results globally
+      globalDoctorsCache = approvedDoctors;
+      globalCacheTimestamp = now;
+      
+      setApproved(approvedDoctors)
+    } catch (err: any) {
+      console.error("Error fetching approved doctors:", err)
+      setError(err.message || "فشل في تحميل الأطباء")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchApprovedDoctors()
+  }, [])
+
+  return {
+    approved,
+    isLoading,
+    error,
+    refresh: fetchApprovedDoctors,
   }
 }

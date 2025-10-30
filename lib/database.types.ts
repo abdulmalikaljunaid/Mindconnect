@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
@@ -56,7 +58,10 @@ export type Database = {
       }
       appointments: {
         Row: {
+          cancelled_at: string | null
           companion_id: string | null
+          confirmed_at: string | null
+          consultation_fee: number | null
           created_at: string | null
           created_by: string
           doctor_id: string
@@ -66,12 +71,16 @@ export type Database = {
           notes: string | null
           patient_id: string
           reason: string | null
+          rejection_reason: string | null
           scheduled_at: string
           status: Database["public"]["Enums"]["appointment_status_type"]
           updated_at: string | null
         }
         Insert: {
+          cancelled_at?: string | null
           companion_id?: string | null
+          confirmed_at?: string | null
+          consultation_fee?: number | null
           created_at?: string | null
           created_by: string
           doctor_id: string
@@ -81,12 +90,16 @@ export type Database = {
           notes?: string | null
           patient_id: string
           reason?: string | null
+          rejection_reason?: string | null
           scheduled_at: string
           status?: Database["public"]["Enums"]["appointment_status_type"]
           updated_at?: string | null
         }
         Update: {
+          cancelled_at?: string | null
           companion_id?: string | null
+          confirmed_at?: string | null
+          consultation_fee?: number | null
           created_at?: string | null
           created_by?: string
           doctor_id?: string
@@ -96,6 +109,7 @@ export type Database = {
           notes?: string | null
           patient_id?: string
           reason?: string | null
+          rejection_reason?: string | null
           scheduled_at?: string
           status?: Database["public"]["Enums"]["appointment_status_type"]
           updated_at?: string | null
@@ -177,45 +191,100 @@ export type Database = {
       }
       doctor_profiles: {
         Row: {
+          approval_notes: string | null
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          audio_consultation_fee: number | null
+          certificate_document_url: string | null
           clinic_address: string | null
           consultation_fee: number | null
           created_at: string | null
+          cv_document_url: string | null
+          education: string | null
           experience_years: number | null
+          id_document_url: string | null
+          in_person_consultation_fee: number | null
           languages: string[] | null
+          license_document_url: string | null
           license_number: string
+          messaging_consultation_fee: number | null
           metadata: Json | null
+          offers_audio: boolean | null
           offers_in_person: boolean | null
+          offers_messaging: boolean | null
           offers_video: boolean | null
           profile_id: string
+          submitted_at: string | null
           updated_at: string | null
+          video_consultation_fee: number | null
         }
         Insert: {
+          approval_notes?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          audio_consultation_fee?: number | null
+          certificate_document_url?: string | null
           clinic_address?: string | null
           consultation_fee?: number | null
           created_at?: string | null
+          cv_document_url?: string | null
+          education?: string | null
           experience_years?: number | null
+          id_document_url?: string | null
+          in_person_consultation_fee?: number | null
           languages?: string[] | null
+          license_document_url?: string | null
           license_number: string
+          messaging_consultation_fee?: number | null
           metadata?: Json | null
+          offers_audio?: boolean | null
           offers_in_person?: boolean | null
+          offers_messaging?: boolean | null
           offers_video?: boolean | null
           profile_id: string
+          submitted_at?: string | null
           updated_at?: string | null
+          video_consultation_fee?: number | null
         }
         Update: {
+          approval_notes?: string | null
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          audio_consultation_fee?: number | null
+          certificate_document_url?: string | null
           clinic_address?: string | null
           consultation_fee?: number | null
           created_at?: string | null
+          cv_document_url?: string | null
+          education?: string | null
           experience_years?: number | null
+          id_document_url?: string | null
+          in_person_consultation_fee?: number | null
           languages?: string[] | null
+          license_document_url?: string | null
           license_number?: string
+          messaging_consultation_fee?: number | null
           metadata?: Json | null
+          offers_audio?: boolean | null
           offers_in_person?: boolean | null
+          offers_messaging?: boolean | null
           offers_video?: boolean | null
           profile_id?: string
+          submitted_at?: string | null
           updated_at?: string | null
+          video_consultation_fee?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "doctor_profiles_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "doctor_profiles_profile_id_fkey"
             columns: ["profile_id"]
@@ -506,10 +575,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_admin_account: {
+        Args: {
+          admin_email: string
+          admin_name: string
+          admin_password_hash: string
+        }
+        Returns: string
+      }
+      create_admin_account_direct: {
+        Args: { admin_email: string; admin_name: string }
+        Returns: string
+      }
+      create_admin_profile:
+        | { Args: { user_email: string; user_name: string }; Returns: string }
+        | {
+            Args: { user_email: string; user_id: string; user_name: string }
+            Returns: undefined
+          }
     }
     Enums: {
-      appointment_mode_type: "video" | "in_person"
+      appointment_mode_type: "video" | "in_person" | "audio" | "messaging"
       appointment_status_type:
         | "pending"
         | "confirmed"
@@ -524,21 +610,139 @@ export type Database = {
       [_ in never]: never
     }
   }
-};
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  TableName extends keyof Database["public"]["Tables"]
-> = Database["public"]["Tables"][TableName]["Row"];
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
-  TableName extends keyof Database["public"]["Tables"]
-> = Database["public"]["Tables"][TableName]["Insert"];
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
-  TableName extends keyof Database["public"]["Tables"]
-> = Database["public"]["Tables"][TableName]["Update"];
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
-  EnumName extends keyof Database["public"]["Enums"]
-> = Database["public"]["Enums"][EnumName];
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      appointment_mode_type: ["video", "in_person", "audio", "messaging"],
+      appointment_status_type: [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "no_show",
+        "rescheduled",
+      ],
+      companion_link_status: ["pending", "approved", "revoked"],
+      role_type: ["patient", "doctor", "companion", "admin"],
+    },
+  },
+} as const

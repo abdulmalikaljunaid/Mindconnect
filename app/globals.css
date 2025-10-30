@@ -78,51 +78,65 @@
   /* Updated font to Cairo for Arabic support */
   --font-sans: "Cairo", ui-sans-serif, system-ui, sans-serif;
 
-  /* Color System - Calming and Professional */
-  --color-background: #fafafa;
+  /* Color System - Mental Health Focused: Calm, Warm & Balanced */
+  --color-background: #fdfbff;
   --color-foreground: #1a1a1a;
 
-  --color-primary: #4a90a4;
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
   --color-primary-foreground: #ffffff;
 
-  --color-secondary: #e8f4f8;
-  --color-secondary-foreground: #2c5f6f;
+  --color-secondary: #f0f4ff;
+  --color-secondary-foreground: #4338ca;
 
-  --color-accent: #7fb069;
+  --color-accent: #10b981;
   --color-accent-foreground: #ffffff;
 
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #6b7280;
+  --color-accent-warm: #f472b6;
+  --color-accent-warm-foreground: #ffffff;
+
+  --color-muted: #f8fafc;
+  --color-muted-foreground: #64748b;
 
   --color-card: #ffffff;
   --color-card-foreground: #1a1a1a;
 
-  --color-border: #e5e7eb;
+  --color-border: #e2e8f0;
 
-  --radius: 0.5rem;
+  --color-gradient-1: #6366f1;
+  --color-gradient-2: #a855f7;
+
+  --radius: 0.75rem;
 }
 
 @media (prefers-color-scheme: dark) {
   @theme inline {
-    --color-background: #0f1419;
-    --color-foreground: #f5f5f5;
+    --color-background: #0f172a;
+    --color-foreground: #f1f5f9;
 
-    --color-primary: #5ba3b8;
+    --color-primary: #818cf8;
+    --color-primary-hover: #6366f1;
     --color-primary-foreground: #ffffff;
 
-    --color-secondary: #1a2830;
-    --color-secondary-foreground: #a8d5e2;
+    --color-secondary: #1e1b4b;
+    --color-secondary-foreground: #c7d2fe;
 
-    --color-accent: #8fc77e;
+    --color-accent: #34d399;
     --color-accent-foreground: #ffffff;
 
-    --color-muted: #1a1a1a;
-    --color-muted-foreground: #9ca3af;
+    --color-accent-warm: #f9a8d4;
+    --color-accent-warm-foreground: #ffffff;
 
-    --color-card: #1a1a1a;
-    --color-card-foreground: #f5f5f5;
+    --color-muted: #1e293b;
+    --color-muted-foreground: #94a3b8;
 
-    --color-border: #2d2d2d;
+    --color-card: #1e293b;
+    --color-card-foreground: #f1f5f9;
+
+    --color-border: #334155;
+
+    --color-gradient-1: #818cf8;
+    --color-gradient-2: #c084fc;
   }
 }
 
@@ -184,7 +198,7 @@ body {
   color: var(--color-foreground);
 }
 
-/* Animation for scroll-triggered elements */
+/* Animations for mental health UI */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -198,4 +212,42 @@ body {
 
 .animate-fade-in-up {
   animation: fade-in-up 0.7s ease-out forwards;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
+  }
+}
+
+.animate-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+/* Smooth hover effects for cards */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.1),
+              0 10px 10px -5px rgba(168, 85, 247, 0.04);
 }

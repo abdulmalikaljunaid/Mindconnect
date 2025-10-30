@@ -1,14 +1,14 @@
 export type Specialty = 
-  | "ADHD" 
-  | "Depression" 
-  | "Anxiety" 
-  | "Bipolar"
-  | "OCD"
-  | "PTSD"
-  | "Eating_Disorders"
-  | "Sleep_Disorders"
-  | "Addiction"
-  | "General_Psychiatry";
+  | "general-psychiatry"
+  | "depression-anxiety"
+  | "child-adolescent"
+  | "addiction-treatment"
+  | "eating-disorders"
+  | "psychotic-disorders"
+  | "family-couples-therapy"
+  | "sleep-disorders"
+  | "trauma-ptsd"
+  | "cognitive-behavioral";
 
 export interface Condition {
   name: string;

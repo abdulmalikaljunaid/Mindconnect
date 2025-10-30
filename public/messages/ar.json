@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "عناية العقل",
+    "appName": "Mindconnect",
     "appDescription": "منصة دعم الصحة النفسية المهنية",
     "loading": "جاري التحميل...",
     "error": "خطأ",
@@ -51,7 +51,7 @@
     "settings": "الإعدادات"
   },
   "auth": {
-    "welcome": "مرحباً بك في عناية العقل",
+    "welcome": "مرحباً بك في Mindconnect",
     "signIn": "تسجيل الدخول",
     "signUp": "إنشاء حساب",
     "email": "البريد الإلكتروني",

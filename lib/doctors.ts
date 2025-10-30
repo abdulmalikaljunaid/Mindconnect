@@ -7,7 +7,7 @@ const FALLBACK_DOCTORS: Doctor[] = [
     id: "doc-1",
     name: "Dr. Sarah Williams",
     nameAr: "د. سارة ويليامز",
-    specialties: ["ADHD", "Anxiety", "Depression"],
+    specialties: ["depression-anxiety", "cognitive-behavioral"],
     experience: 8,
     rating: 4.9,
     avatar: "/placeholder-user.jpg",
@@ -18,7 +18,7 @@ const FALLBACK_DOCTORS: Doctor[] = [
     id: "doc-2",
     name: "Dr. Michael Chen",
     nameAr: "د. مايكل تشين",
-    specialties: ["Depression", "Bipolar", "General_Psychiatry"],
+    specialties: ["depression-anxiety", "psychotic-disorders", "general-psychiatry"],
     experience: 12,
     rating: 4.8,
     avatar: "/placeholder-user.jpg",
@@ -29,7 +29,7 @@ const FALLBACK_DOCTORS: Doctor[] = [
     id: "doc-3",
     name: "Dr. Fatima Al-Rashid",
     nameAr: "د. فاطمة الراشد",
-    specialties: ["Anxiety", "OCD", "PTSD"],
+    specialties: ["depression-anxiety", "trauma-ptsd"],
     experience: 6,
     rating: 4.7,
     avatar: "/placeholder-user.jpg",
@@ -40,7 +40,7 @@ const FALLBACK_DOCTORS: Doctor[] = [
     id: "doc-4",
     name: "Dr. Ahmed Hassan",
     nameAr: "د. أحمد حسن",
-    specialties: ["Sleep_Disorders", "Addiction", "General_Psychiatry"],
+    specialties: ["sleep-disorders", "addiction-treatment", "general-psychiatry"],
     experience: 10,
     rating: 4.6,
     avatar: "/placeholder-user.jpg",
@@ -51,7 +51,7 @@ const FALLBACK_DOCTORS: Doctor[] = [
     id: "doc-5",
     name: "Dr. Lisa Anderson",
     nameAr: "د. ليزا أندرسون",
-    specialties: ["Eating_Disorders", "Depression", "Anxiety"],
+    specialties: ["eating-disorders", "depression-anxiety"],
     experience: 7,
     rating: 4.9,
     avatar: "/placeholder-user.jpg",
@@ -62,7 +62,7 @@ const FALLBACK_DOCTORS: Doctor[] = [
     id: "doc-6",
     name: "Dr. Omar Khalil",
     nameAr: "د. عمر خليل",
-    specialties: ["ADHD", "General_Psychiatry"],
+    specialties: ["child-adolescent", "general-psychiatry"],
     experience: 15,
     rating: 4.8,
     avatar: "/placeholder-user.jpg",
@@ -89,21 +89,46 @@ interface DoctorProfileRow extends Tables<"doctor_profiles"> {
 
 function normalizeSpecialty(slug: string | null): Specialty | null {
   if (!slug) return null
-  const normalized = slug.replace(/[-\s]/g, "_")
+  
+  // تنظيف الـ slug وتوحيد الصيغة
+  const normalized = slug.toLowerCase().trim().replace(/\s+/g, "-")
+  
   const specialties: Specialty[] = [
-    "ADHD",
-    "Depression",
-    "Anxiety",
-    "Bipolar",
-    "OCD",
-    "PTSD",
-    "Eating_Disorders",
-    "Sleep_Disorders",
-    "Addiction",
-    "General_Psychiatry",
+    "general-psychiatry",
+    "depression-anxiety",
+    "child-adolescent",
+    "addiction-treatment",
+    "eating-disorders",
+    "psychotic-disorders",
+    "family-couples-therapy",
+    "sleep-disorders",
+    "trauma-ptsd",
+    "cognitive-behavioral",
   ]
 
-  return specialties.find((spec) => spec.toLowerCase() === normalized.toLowerCase()) ?? null
+  // محاولة التطابق المباشر
+  if (specialties.includes(normalized as Specialty)) {
+    return normalized as Specialty
+  }
+
+  // محاولة التطابق الجزئي للتوافق مع الأنماط القديمة
+  const legacyMappings: Record<string, Specialty> = {
+    "adhd": "child-adolescent",
+    "depression": "depression-anxiety",
+    "anxiety": "depression-anxiety",
+    "bipolar": "psychotic-disorders",
+    "ocd": "depression-anxiety",
+    "ptsd": "trauma-ptsd",
+    "eating_disorders": "eating-disorders",
+    "eating-disorders": "eating-disorders",
+    "sleep_disorders": "sleep-disorders",
+    "sleep-disorders": "sleep-disorders",
+    "addiction": "addiction-treatment",
+    "general_psychiatry": "general-psychiatry",
+    "general-psychiatry": "general-psychiatry",
+  }
+
+  return legacyMappings[normalized] || null
 }
 
 function buildDoctor(row: DoctorProfileRow): Doctor | null {
@@ -169,7 +194,7 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
         experience_years,
         languages,
         metadata,
-        profile:profiles (id, name, avatar_url, bio, is_approved),
+        profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved),
         doctor_specialties!inner (
           specialties!inner (id, name, slug)
         )
@@ -209,7 +234,7 @@ export async function getDoctorById(id: string): Promise<Doctor | null> {
         experience_years,
         languages,
         metadata,
-        profile:profiles (id, name, avatar_url, bio, is_approved),
+        profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved),
         doctor_specialties (
           specialties (id, name, slug)
         )
@@ -235,16 +260,16 @@ export async function getDoctorById(id: string): Promise<Doctor | null> {
 
 export function getSpecialtyDisplayName(specialty: Specialty): string {
   const specialtyNames: Record<Specialty, string> = {
-    ADHD: "اضطراب نقص الانتباه وفرط النشاط",
-    Depression: "الاكتئاب",
-    Anxiety: "القلق",
-    Bipolar: "الاضطراب ثنائي القطب",
-    OCD: "الوسواس القهري",
-    PTSD: "اضطراب ما بعد الصدمة",
-    Eating_Disorders: "اضطرابات الأكل",
-    Sleep_Disorders: "اضطرابات النوم",
-    Addiction: "الإدمان",
-    General_Psychiatry: "طب نفسي عام"
+    "general-psychiatry": "الطب النفسي العام",
+    "depression-anxiety": "علاج الاكتئاب والقلق",
+    "child-adolescent": "الطب النفسي للأطفال والمراهقين",
+    "addiction-treatment": "علاج الإدمان",
+    "eating-disorders": "اضطرابات الأكل",
+    "psychotic-disorders": "الاضطرابات الذهانية",
+    "family-couples-therapy": "العلاج الأسري والزوجي",
+    "sleep-disorders": "اضطرابات النوم",
+    "trauma-ptsd": "الصدمات والضغط النفسي",
+    "cognitive-behavioral": "علم النفس السلوكي المعرفي"
   }
   
   return specialtyNames[specialty] || specialty

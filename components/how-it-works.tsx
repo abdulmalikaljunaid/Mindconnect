@@ -45,8 +45,8 @@ export function HowItWorks() {
         
         const progressHeight = progress * 100
         
-        // Update progress line with green color
-        progressLine.style.background = `linear-gradient(to bottom, #10b981 0%, #10b981 ${progressHeight}%, #e2e8f0 ${progressHeight}%, #e2e8f0 100%)`
+        // Update progress line with gradient color
+        progressLine.style.background = `linear-gradient(to bottom, #6366f1 0%, #a855f7 ${progressHeight}%, #e2e8f0 ${progressHeight}%, #e2e8f0 100%)`
         
         // Update dots based on their actual position on screen
         steps.forEach((_, index) => {
@@ -112,16 +112,16 @@ export function HowItWorks() {
   ]
 
   return (
-    <section id="how-it-works" className="relative py-24 md:py-36 bg-slate-50">
+    <section id="how-it-works" className="relative py-24 md:py-36 bg-gradient-to-b from-white via-indigo-50/30 to-purple-50/30">
       {/* Smooth transition gradient */}
-      <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-slate-50"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-50 to-slate-50"></div>
+      <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-purple-50/30 to-transparent"></div>
       
       <div className="container mx-auto px-4 relative">
         <div className="mx-auto max-w-4xl text-center mb-20">
           <h2 className="mb-6 text-balance text-4xl font-bold text-slate-900 md:text-5xl">كيف يعمل</h2>
           <p className="text-pretty text-xl text-slate-600 leading-relaxed">
-            البدء مع عناية العقل بسيط. اتبع هذه الخطوات لتبدأ رحلتك نحو الصحة النفسية.
+            البدء مع Mindconnect بسيط. اتبع هذه الخطوات لتبدأ رحلتك نحو الصحة النفسية.
           </p>
         </div>
 

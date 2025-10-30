@@ -6,14 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { User, Mail, Phone, Award, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { User, Mail, Phone, Award, CheckCircle, XCircle, Clock, FileText, ExternalLink, Download, AlertCircle } from "lucide-react"
 import { useAdminDoctors, type DoctorWithProfile } from "@/hooks/use-doctors"
+import { supabaseClient } from "@/lib/supabase-client"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DoctorApprovalsPage() {
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorWithProfile | null>(null)
   const [showDialog, setShowDialog] = useState(false)
+  const [showRejectDialog, setShowRejectDialog] = useState(false)
+  const [rejectionNotes, setRejectionNotes] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
   const { pending, approved, rejected, isLoading, approveDoctor, rejectDoctor, refresh } = useAdminDoctors()
+  const { toast } = useToast()
 
   const summary = useMemo(
     () => ({
@@ -32,18 +41,103 @@ export default function DoctorApprovalsPage() {
   const closeDialog = () => {
     setShowDialog(false)
     setSelectedDoctor(null)
+    setRejectionNotes("")
   }
 
   const handleApprove = async () => {
     if (!selectedDoctor) return
-    await approveDoctor(selectedDoctor.id)
-    closeDialog()
+    setIsProcessing(true)
+    try {
+      await approveDoctor(selectedDoctor.id)
+      closeDialog()
+      toast({
+        title: "تم القبول بنجاح",
+        description: `تم قبول طلب الدكتور ${selectedDoctor.name}`,
+      })
+    } catch (error) {
+      console.error("Error approving doctor:", error)
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء الموافقة على الطلب",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
-  const handleReject = async () => {
+  const handleRejectClick = () => {
+    setShowDialog(false)
+    setShowRejectDialog(true)
+  }
+
+  const handleRejectConfirm = async () => {
     if (!selectedDoctor) return
-    await rejectDoctor(selectedDoctor.id)
-    closeDialog()
+    setIsProcessing(true)
+    try {
+      await rejectDoctor(selectedDoctor.id, rejectionNotes || undefined)
+      setShowRejectDialog(false)
+      closeDialog()
+      toast({
+        title: "تم الرفض",
+        description: `تم رفض طلب الدكتور ${selectedDoctor.name}`,
+      })
+    } catch (error) {
+      console.error("Error rejecting doctor:", error)
+      toast({
+        title: "خطأ",
+        description: "حدث خطأ أثناء رفض الطلب",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleViewDocument = async (url: string | null | undefined) => {
+    if (!url) return
+
+    try {
+      // استخراج اسم الملف من الـ URL
+      const urlObj = new URL(url)
+      const pathParts = urlObj.pathname.split('/object/public/doctor-documents/')
+      if (pathParts.length < 2) {
+        toast({
+          title: "خطأ",
+          description: "رابط الملف غير صحيح",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const filePath = pathParts[1]
+
+      // الحصول على signed URL
+      const { data, error } = await supabaseClient.storage
+        .from('doctor-documents')
+        .createSignedUrl(filePath, 60) // صالح لمدة 60 ثانية
+
+      if (error) {
+        console.error('Error creating signed URL:', error)
+        toast({
+          title: "خطأ في فتح الملف",
+          description: error.message,
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank')
+      }
+    } catch (error) {
+      console.error('Error viewing document:', error)
+      toast({
+        title: "خطأ",
+        description: "فشل في فتح الملف",
+        variant: "destructive",
+      })
+    }
   }
 
   const renderDoctorCard = (doctor: DoctorWithProfile, statusLabel: string, badgeVariant: "default" | "secondary" | "destructive") => (
@@ -184,10 +278,10 @@ export default function DoctorApprovalsPage() {
 
       {/* Review Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Review Doctor Application</DialogTitle>
-            <DialogDescription>Review the credentials and approve or reject this application</DialogDescription>
+            <DialogTitle>مراجعة طلب الطبيب</DialogTitle>
+            <DialogDescription>راجع البيانات والمستندات ووافق أو ارفض الطلب</DialogDescription>
           </DialogHeader>
 
           {selectedDoctor && (
@@ -198,32 +292,43 @@ export default function DoctorApprovalsPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold">{selectedDoctor.name}</h3>
-                  <p className="text-muted-foreground">{selectedDoctor.specialties.join(" • ") || "Specialty not provided"}</p>
+                  <p className="text-muted-foreground">{selectedDoctor.specialties.join(" • ") || "لم يتم تحديد التخصص"}</p>
+                  {selectedDoctor.submittedAt && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      تاريخ التقديم: {new Date(selectedDoctor.submittedAt).toLocaleDateString('ar-EG')}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 {selectedDoctor.email && (
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Email</p>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      البريد الإلكتروني
+                    </p>
                     <p className="text-sm text-muted-foreground">{selectedDoctor.email}</p>
                   </div>
                 )}
                 {selectedDoctor.phone && (
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Phone</p>
+                    <p className="text-sm font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      الهاتف
+                    </p>
                     <p className="text-sm text-muted-foreground">{selectedDoctor.phone}</p>
                   </div>
                 )}
                 {selectedDoctor.experienceYears && (
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Experience</p>
-                    <p className="text-sm text-muted-foreground">{selectedDoctor.experienceYears} years</p>
+                    <p className="text-sm font-medium">سنوات الخبرة</p>
+                    <p className="text-sm text-muted-foreground">{selectedDoctor.experienceYears} سنة</p>
                   </div>
                 )}
                 {selectedDoctor.licenseNumber && (
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">License Number</p>
+                    <p className="text-sm font-medium">رقم الرخصة</p>
                     <p className="text-sm text-muted-foreground">{selectedDoctor.licenseNumber}</p>
                   </div>
                 )}
@@ -231,36 +336,170 @@ export default function DoctorApprovalsPage() {
 
               {selectedDoctor.education && (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Education</p>
-                  <p className="text-sm text-muted-foreground">{selectedDoctor.education}</p>
+                  <p className="text-sm font-medium">المؤهل العلمي</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedDoctor.education}</p>
                 </div>
               )}
 
-              <div className="rounded-lg bg-muted p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-                  <Award className="h-4 w-4" />
-                  Verification Checklist
+              {/* Documents Section */}
+              <div className="rounded-lg border border-border p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h4 className="font-semibold">المستندات المرفقة</h4>
                 </div>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>✓ Valid medical license verified</li>
-                  <li>✓ Education credentials confirmed</li>
-                  <li>✓ Background check completed</li>
-                  <li>✓ Professional references verified</li>
-                </ul>
+                
+                <div className="grid gap-3 md:grid-cols-2">
+                  {selectedDoctor.licenseDocumentUrl && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">صورة الرخصة</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleViewDocument(selectedDoctor.licenseDocumentUrl)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {selectedDoctor.certificateDocumentUrl && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">الشهادة العلمية</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleViewDocument(selectedDoctor.certificateDocumentUrl)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {selectedDoctor.cvDocumentUrl && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">السيرة الذاتية</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleViewDocument(selectedDoctor.cvDocumentUrl)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {selectedDoctor.idDocumentUrl && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span className="text-sm">صورة الهوية</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleViewDocument(selectedDoctor.idDocumentUrl)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {!selectedDoctor.licenseDocumentUrl && 
+                 !selectedDoctor.certificateDocumentUrl && 
+                 !selectedDoctor.cvDocumentUrl && 
+                 !selectedDoctor.idDocumentUrl && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      لم يتم رفع أي مستندات من قبل الطبيب
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
 
+              {selectedDoctor.approvalNotes && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>ملاحظات:</strong> {selectedDoctor.approvalNotes}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="flex gap-2">
-                <Button onClick={handleApprove} className="flex-1">
+                <Button 
+                  onClick={handleApprove} 
+                  className="flex-1"
+                  disabled={isProcessing}
+                >
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve Application
+                  {isProcessing ? "جاري الموافقة..." : "الموافقة على الطلب"}
                 </Button>
-                <Button onClick={handleReject} variant="destructive" className="flex-1">
+                <Button 
+                  onClick={handleRejectClick} 
+                  variant="destructive" 
+                  className="flex-1"
+                  disabled={isProcessing}
+                >
                   <XCircle className="mr-2 h-4 w-4" />
-                  Reject Application
+                  رفض الطلب
                 </Button>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Dialog */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>رفض طلب الطبيب</DialogTitle>
+            <DialogDescription>
+              يرجى إدخال سبب الرفض (اختياري). سيتم إرسال هذه الملاحظات إلى الطبيب.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-notes">سبب الرفض</Label>
+              <Textarea
+                id="rejection-notes"
+                placeholder="مثال: المستندات المرفقة غير واضحة، يرجى إعادة تحميل الرخصة..."
+                value={rejectionNotes}
+                onChange={(e) => setRejectionNotes(e.target.value)}
+                rows={4}
+                disabled={isProcessing}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowRejectDialog(false)}
+              disabled={isProcessing}
+            >
+              إلغاء
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleRejectConfirm}
+              disabled={isProcessing}
+            >
+              {isProcessing ? "جاري الرفض..." : "تأكيد الرفض"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

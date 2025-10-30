@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { authService, type UserProfile } from "@/lib/auth"
+import { authService, type UserProfile, type UserRole } from "@/lib/auth"
 
 interface AuthContextType {
   user: UserProfile | null
@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string, role: UserProfile["role"]) => Promise<void>
+  signInWithGoogle: (role: UserRole) => Promise<void>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -41,20 +42,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    await authService.signIn(email, password)
-    const currentUser = await authService.getCurrentUser()
-    setUser(currentUser)
+    const user = await authService.signIn(email, password)
+    // Update user immediately for faster response
+    if (user) {
+      setUser(user)
+    }
+    // onAuthStateChange listener will also handle user update
   }
 
   const signUp = async (email: string, password: string, name: string, role: UserProfile["role"]) => {
-    await authService.signUp(email, password, name, role)
-    const currentUser = await authService.getCurrentUser()
-    setUser(currentUser)
+    const newUser = await authService.signUp(email, password, name, role)
+    // Update user immediately if returned
+    if (newUser) {
+      setUser(newUser)
+    }
+    // onAuthStateChange listener will also handle user update
+  }
+
+  const signInWithGoogle = async (role: UserRole) => {
+    await authService.signInWithGoogle(role)
+    // OAuth redirect will handle the rest
   }
 
   const signOut = async () => {
-    await authService.signOut()
-    setUser(null)
+    console.log("Signing out...")
+    try {
+      await authService.signOut()
+      setUser(null)
+      console.log("Sign out successful")
+    } catch (error) {
+      console.error("Sign out error:", error)
+      // Clear user state even if signOut fails
+      setUser(null)
+      throw error
+    }
   }
 
   const refreshUser = async () => {
@@ -70,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         signIn,
         signUp,
+        signInWithGoogle,
         signOut,
         refreshUser,
       }}

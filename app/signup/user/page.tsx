@@ -9,11 +9,12 @@ import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { GoogleButton } from "@/components/ui/google-button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Spinner } from "@/components/ui/spinner"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { AlertCircle, User, Users } from "lucide-react"
+import { AlertCircle, User, Users, Brain } from "lucide-react"
 import type { UserRole } from "@/lib/auth"
 
 export default function UserSignUpPage() {
@@ -24,7 +25,8 @@ export default function UserSignUpPage() {
   const [role, setRole] = useState<UserRole>("patient")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { signUp } = useAuth()
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const { signUp, signInWithGoogle } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,11 +47,25 @@ export default function UserSignUpPage() {
 
     try {
       await signUp(email, password, name, role)
-      router.push("/dashboard")
+      
+      // Redirect immediately without delay
+      router.replace("/dashboard")
     } catch (err: any) {
       setError(err?.message ?? "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")
-    } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignUp = async () => {
+    setError("")
+    setIsGoogleLoading(true)
+
+    try {
+      await signInWithGoogle(role)
+      // OAuth redirect will handle the rest
+    } catch (err: any) {
+      setError(err?.message ?? "فشل تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.")
+      setIsGoogleLoading(false)
     }
   }
 
@@ -60,9 +76,9 @@ export default function UserSignUpPage() {
           <div className="mb-4 flex justify-center">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                <span className="text-xl font-bold text-primary-foreground">ع</span>
+                <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-semibold">عناية العقل</span>
+              <span className="text-2xl font-semibold">Mindconnect</span>
             </Link>
           </div>
           <CardTitle className="text-center text-2xl flex items-center gap-2">
@@ -105,6 +121,29 @@ export default function UserSignUpPage() {
                   </Label>
                 </div>
               </RadioGroup>
+            </div>
+
+            <GoogleButton
+              onClick={handleGoogleSignUp}
+              disabled={isLoading || isGoogleLoading}
+            >
+              {isGoogleLoading ? (
+                <>
+                  <Spinner className="ml-2 h-4 w-4" />
+                  جاري التوجيه...
+                </>
+              ) : (
+                "إنشاء حساب بواسطة Google"
+              )}
+            </GoogleButton>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">أو</span>
+              </div>
             </div>
 
             <div className="space-y-2">

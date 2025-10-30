@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { AuthProvider } from "@/contexts/auth-context"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -12,7 +13,7 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
 }
 
 export const metadata: Metadata = {
-  title: "عناية العقل - دعم الصحة النفسية المهني",
+  title: "Mindconnect - دعم الصحة النفسية المهني",
   description: "تواصل مع متخصصين مؤهلين في الصحة النفسية واحصل على الدعم الذي تحتاجه",
   generator: "v0.app",
 }
@@ -33,7 +34,10 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   )

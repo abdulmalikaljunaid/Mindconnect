@@ -1,45 +1,100 @@
 "use client"
 
+import { useMemo } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { SkeletonStatsCard, SkeletonCard } from "@/components/ui/skeleton-loader"
 import { Calendar, Users, Clock, TrendingUp, User, Video, MapPin } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
+import { useDoctorAppointments } from "@/hooks/use-appointments"
+import { format, isToday, startOfDay, endOfDay } from "date-fns"
+import { ar } from "date-fns/locale"
+import { supabaseClient } from "@/lib/supabase-client"
+import { useEffect, useState } from "react"
 
 export function DoctorDashboard() {
-  const todayAppointments = [
-    {
-      id: 1,
-      patient: "سارة جونسون",
-      time: "10:00 صباحاً",
-      duration: "50 دقيقة",
-      type: "video",
-      status: "قادم",
-    },
-    {
-      id: 2,
-      patient: "مايكل براون",
-      time: "2:30 مساءً",
-      duration: "30 دقيقة",
-      type: "in-person",
-      status: "قادم",
-    },
-    {
-      id: 3,
-      patient: "إيميلي ديفيس",
-      time: "4:00 مساءً",
-      duration: "50 دقيقة",
-      type: "video",
-      status: "قادم",
-    },
-  ]
+  const { user } = useAuth()
+  const { appointments, upcoming, confirmed, isLoading } = useDoctorAppointments()
+  const [patientCount, setPatientCount] = useState(0)
 
-  const recentPatients = [
-    { id: 1, name: "سارة جونسون", lastVisit: "2025-01-10", status: "نشط" },
-    { id: 2, name: "مايكل براون", lastVisit: "2025-01-08", status: "نشط" },
-    { id: 3, name: "إيميلي ديفيس", lastVisit: "2025-01-05", status: "نشط" },
-  ]
+  // Get today's appointments
+  const todayAppointments = useMemo(() => {
+    const today = new Date()
+    return upcoming.filter((apt) => {
+      const aptDate = new Date(apt.scheduledAt)
+      return isToday(aptDate)
+    })
+  }, [upcoming])
+
+  // Get unique patients count
+  useEffect(() => {
+    const fetchPatientCount = async () => {
+      if (!user) return
+      try {
+        const { data } = await supabaseClient
+          .from("appointments")
+          .select("patient_id")
+          .eq("doctor_id", user.id)
+          .in("status", ["pending", "confirmed", "completed"])
+        
+        const uniquePatients = new Set(data?.map((apt) => apt.patient_id) || [])
+        setPatientCount(uniquePatients.size)
+      } catch (error) {
+        console.error("Error fetching patient count:", error)
+      }
+    }
+    fetchPatientCount()
+  }, [user])
+
+  const getModeIcon = (mode: string) => {
+    switch (mode) {
+      case "video":
+        return <Video className="h-4 w-4 text-muted-foreground" />
+      case "in_person":
+        return <MapPin className="h-4 w-4 text-muted-foreground" />
+      default:
+        return <User className="h-4 w-4 text-muted-foreground" />
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return "قيد الانتظار"
+      case "confirmed":
+        return "مؤكد"
+      case "completed":
+        return "مكتمل"
+      default:
+        return status
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">لوحة تحكم الطبيب</h1>
+            <p className="text-muted-foreground">إدارة عيادتك ومرضاك</p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-4">
+            <SkeletonStatsCard />
+            <SkeletonStatsCard />
+            <SkeletonStatsCard />
+            <SkeletonStatsCard />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
@@ -58,7 +113,11 @@ export function DoctorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{todayAppointments.length}</div>
-              <p className="text-xs text-muted-foreground">التالي في 10:00 صباحاً</p>
+              <p className="text-xs text-muted-foreground">
+                {todayAppointments.length > 0
+                  ? `التالي في ${format(new Date(todayAppointments[0].scheduledAt), "HH:mm", { locale: ar })}`
+                  : "لا توجد مواعيد اليوم"}
+              </p>
             </CardContent>
           </Card>
 
@@ -68,19 +127,19 @@ export function DoctorDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">24</div>
-              <p className="text-xs text-muted-foreground">3 جدد هذا الشهر</p>
+              <div className="text-2xl font-bold">{patientCount}</div>
+              <p className="text-xs text-muted-foreground">مرضى نشطون</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">هذا الأسبوع</CardTitle>
+              <CardTitle className="text-sm font-medium">المواعيد المؤكدة</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">18</div>
-              <p className="text-xs text-muted-foreground">جلسة مجدولة</p>
+              <div className="text-2xl font-bold">{confirmed.length}</div>
+              <p className="text-xs text-muted-foreground">جلسة مؤكدة</p>
             </CardContent>
           </Card>
 
@@ -90,8 +149,8 @@ export function DoctorDashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">4.9</div>
-              <p className="text-xs text-accent">+0.2 من الشهر الماضي</p>
+              <div className="text-2xl font-bold">{appointments.length}</div>
+              <p className="text-xs text-muted-foreground">إجمالي المواعيد</p>
             </CardContent>
           </Card>
         </div>
@@ -104,32 +163,35 @@ export function DoctorDashboard() {
               <CardDescription>مواعيدك لهذا اليوم</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {todayAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="flex items-center justify-between rounded-lg border border-border p-4"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-5 w-5 text-primary" />
+              {todayAppointments.length > 0 ? (
+                todayAppointments.slice(0, 5).map((appointment) => (
+                  <div
+                    key={appointment.id}
+                    className="flex items-center justify-between rounded-lg border border-border p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{appointment.patientName || "مريض"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(appointment.scheduledAt), "HH:mm", { locale: ar })}{" "}
+                          • {appointment.durationMinutes} دقيقة
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{appointment.patient}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {appointment.time} • {appointment.duration}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      {getModeIcon(appointment.mode)}
+                      <Badge variant="secondary">{getStatusLabel(appointment.status)}</Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {appointment.type === "video" ? (
-                      <Video className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <Badge variant="secondary">{appointment.status}</Badge>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  لا توجد مواعيد لهذا اليوم
                 </div>
-              ))}
+              )}
               <Button asChild variant="outline" className="w-full bg-transparent">
                 <Link href="/appointments">عرض جميع المواعيد</Link>
               </Button>
@@ -143,20 +205,28 @@ export function DoctorDashboard() {
               <CardDescription>المرضى الذين قابلتهم مؤخراً</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {recentPatients.map((patient) => (
-                <div key={patient.id} className="flex items-center justify-between rounded-lg border border-border p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                      <User className="h-5 w-5 text-primary" />
+              {confirmed.length > 0 ? (
+                confirmed.slice(0, 5).map((appointment) => (
+                  <div key={appointment.id} className="flex items-center justify-between rounded-lg border border-border p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{appointment.patientName || "مريض"}</p>
+                        <p className="text-sm text-muted-foreground">
+                          آخر زيارة: {format(new Date(appointment.scheduledAt), "d MMMM yyyy", { locale: ar })}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{patient.name}</p>
-                      <p className="text-sm text-muted-foreground">آخر زيارة: {patient.lastVisit}</p>
-                    </div>
+                    <Badge className="bg-accent text-accent-foreground">نشط</Badge>
                   </div>
-                  <Badge className="bg-accent text-accent-foreground">{patient.status}</Badge>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  لا توجد مواعيد مؤكدة
                 </div>
-              ))}
+              )}
               <Button asChild variant="outline" className="w-full bg-transparent">
                 <Link href="/patients">عرض جميع المرضى</Link>
               </Button>

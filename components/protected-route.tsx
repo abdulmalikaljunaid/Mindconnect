@@ -21,17 +21,18 @@ export function ProtectedRoute({ children, allowedRoles, requireApproval = false
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
-        router.push("/login")
+        // Use replace instead of push to prevent back button issues
+        router.replace("/login")
         return
       }
 
       if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        router.push("/unauthorized")
+        router.replace("/unauthorized")
         return
       }
 
-      if (requireApproval && user && !user.approved) {
-        router.push("/pending-approval")
+      if (requireApproval && user && !user.isApproved) {
+        router.replace("/pending-approval")
         return
       }
     }
@@ -53,7 +54,7 @@ export function ProtectedRoute({ children, allowedRoles, requireApproval = false
     return null
   }
 
-  if (requireApproval && user && !user.approved) {
+  if (requireApproval && user && !user.isApproved) {
     return null
   }
 

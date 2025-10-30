@@ -2,11 +2,28 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 import { SYMPTOM_ANALYSIS_PROMPT } from "./prompts"
 import type { AssessmentResult } from "@/types/assessment"
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!)
+// Validate API key exists
+if (!process.env.GOOGLE_GEMINI_API_KEY) {
+  console.warn("Warning: GOOGLE_GEMINI_API_KEY is not set. Symptom analysis will use fallback responses.")
+}
+
+const getGenAI = () => {
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error("GOOGLE_GEMINI_API_KEY is not configured. Please set it in your .env.local file.")
+  }
+  return new GoogleGenerativeAI(apiKey)
+}
 
 export async function analyzeSymptoms(symptoms: string): Promise<AssessmentResult> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    // Check if API key is available
+    if (!process.env.GOOGLE_GEMINI_API_KEY) {
+      throw new Error("Gemini API key is not configured")
+    }
+
+    const genAI = getGenAI()
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
     
     const prompt = SYMPTOM_ANALYSIS_PROMPT.replace("{symptoms}", symptoms)
     
@@ -57,7 +74,11 @@ export async function analyzeSymptoms(symptoms: string): Promise<AssessmentResul
 
 export async function testGeminiConnection(): Promise<boolean> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+    if (!process.env.GOOGLE_GEMINI_API_KEY) {
+      return false
+    }
+    const genAI = getGenAI()
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
     const result = await model.generateContent("Hello")
     return !!result.response
   } catch (error) {

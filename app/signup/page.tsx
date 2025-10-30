@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { User, Stethoscope } from "lucide-react"
+import { User, Stethoscope, Brain } from "lucide-react"
 
 export default function SignUpPage() {
   return (
@@ -13,9 +13,9 @@ export default function SignUpPage() {
           <div className="mb-4 flex justify-center">
             <Link href="/" className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                <span className="text-xl font-bold text-primary-foreground">ع</span>
+                <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-semibold">عناية العقل</span>
+              <span className="text-2xl font-semibold">Mindconnect</span>
             </Link>
           </div>
           <CardTitle className="text-center text-2xl">إنشاء حساب جديد</CardTitle>

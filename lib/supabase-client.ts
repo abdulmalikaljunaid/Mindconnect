@@ -18,20 +18,32 @@ if (!supabaseAnonKey) {
 
 export const supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 
-export const createSupabaseServerClient = (cookieStore: ReturnType<typeof cookies>) =>
+export const createSupabaseServerClient = (
+  cookieStore: Awaited<ReturnType<typeof cookies>>
+) =>
   createServerClient<Database>(
     supabaseUrl,
     supabaseAnonKey,
     {
       cookies: {
-        get(name) {
+        get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name, value, options) {
-          cookieStore.set({ name, value, ...options })
+        set(name: string, value: string, options?: any) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // Cookie may have been deleted or already set
+            console.warn("Failed to set cookie:", error)
+          }
         },
-        remove(name, options) {
-          cookieStore.delete({ name, ...options })
+        remove(name: string, options?: any) {
+          try {
+            cookieStore.delete({ name, ...options })
+          } catch (error) {
+            // Cookie may have been already deleted
+            console.warn("Failed to delete cookie:", error)
+          }
         },
       },
     },

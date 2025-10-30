@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Brain, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react"
+import { VoiceRecorder } from "./voice-recorder"
 
 interface SymptomInputStepProps {
   onBack: () => void
@@ -57,6 +58,11 @@ export function SymptomInputStep({ onBack, onNext }: SymptomInputStepProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <VoiceRecorder 
+            onTranscriptChange={setSymptoms}
+            currentText={symptoms}
+          />
+          
           <Textarea
             value={symptoms}
             onChange={(e) => setSymptoms(e.target.value)}
