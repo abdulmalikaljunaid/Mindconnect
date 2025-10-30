@@ -1,9 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import type { ButtonProps } from "@/components/ui/button"
+import type React from "react"
 
-interface GoogleButtonProps extends Omit<ButtonProps, "type"> {
+interface GoogleButtonProps extends Omit<React.ComponentProps<typeof Button>, "type"> {
   children: React.ReactNode
 }
 
