@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
+import type { TablesInsert, Enums } from "@/lib/database.types"
 import { cookies } from "next/headers"
 
 export const dynamic = "force-dynamic"
@@ -72,14 +73,18 @@ export async function GET(request: Request) {
         data.user.email?.split("@")[0] ||
         "User"
 
-      const { error: insertError } = await supabase.from("profiles").insert({
+      const newProfile: TablesInsert<'profiles'> = {
         id: data.user.id,
         email: data.user.email || "",
         name: name,
-        role: role,
-        is_approved: true, // المرضى والمرافقون معتمدون تلقائياً
-        avatar_url: data.user.user_metadata?.avatar_url || null,
-      })
+        role: role as Enums<'role_type'>,
+        is_approved: true,
+        avatar_url: (data.user.user_metadata?.avatar_url as string | null) ?? null,
+      }
+
+      const { error: insertError } = await supabase
+        .from("profiles" as const)
+        .insert(newProfile)
 
       if (insertError) {
         console.error("Error creating profile:", insertError)
