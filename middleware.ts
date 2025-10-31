@@ -61,9 +61,13 @@ export async function middleware(request: NextRequest) {
   })
 
   // Refresh session if expired - this is crucial for maintaining auth state
+  // getSession() will automatically refresh the token if needed
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  
+  // Get user from the refreshed session
+  const user = session?.user ?? null
 
   const { pathname } = request.nextUrl
 
@@ -87,17 +91,23 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Handle public auth routes - redirect if already authenticated
+  // Handle public auth routes
   if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
-    if (user) {
-      // Already authenticated, redirect to dashboard
-      const redirectUrl = new URL("/dashboard", request.url)
+    // Check if user is coming from force-logout (has logged_out flag)
+    const loggedOut = request.nextUrl.searchParams.get("logged_out") === "true"
+    
+    // If user has session but no logged_out flag, force logout
+    if (user && !loggedOut) {
+      // If a session exists and user is trying to visit a login/signup page,
+      // force a clean logout first to avoid cross-tab session confusion.
+      const forceLogout = new URL("/api/auth/force-logout", request.url)
+      forceLogout.searchParams.set("redirect", pathname)
       response.headers.set("Cache-Control", "no-store, must-revalidate")
-      return NextResponse.redirect(redirectUrl)
+      return NextResponse.redirect(forceLogout)
     }
 
     // Set cache headers for login/signup pages
-    response.headers.set("Cache-Control", "public, max-age=3600, must-revalidate")
+    response.headers.set("Cache-Control", "no-store, must-revalidate")
   }
 
   // Set default cache headers for other public routes

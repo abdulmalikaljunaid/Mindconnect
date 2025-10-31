@@ -40,11 +40,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleSignOut = async () => {
     if (isLoggingOut) return // منع النقرات المتعددة
     
+    setIsLoggingOut(true)
+    
+    // إضافة timeout لضمان إعادة التوجيه حتى لو استغرقت العملية وقتاً طويلاً
+    const redirectTimeout = setTimeout(() => {
+      console.warn("Sign out taking too long, redirecting anyway")
+      setIsLoggingOut(false)
+      window.location.href = "/"
+    }, 6000)
+    
     try {
-      setIsLoggingOut(true)
-      
-      // تسجيل الخروج
       await signOut()
+      
+      clearTimeout(redirectTimeout)
       
       // Show success message briefly
       toast({
@@ -52,21 +60,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         description: "جاري تحويلك إلى الصفحة الرئيسية...",
         duration: 1000,
       })
-      
-      // الانتقال إلى الصفحة الرئيسية
-      // Use window.location for complete state reset
-      window.location.href = "/"
     } catch (error: any) {
       console.error("Error signing out:", error)
       
-      // Even on error, try to redirect and clear state
+      clearTimeout(redirectTimeout)
+      
+      // Even on error, show message
       toast({
         title: "تم تسجيل الخروج",
         description: "جاري تحويلك...",
         duration: 1000,
       })
+    } finally {
+      // إعادة تعيين الحالة دائماً
+      setIsLoggingOut(false)
       
-      // Force redirect to clear state
+      // Force redirect to clear state - always redirect regardless of success/failure
       setTimeout(() => {
         window.location.href = "/"
       }, 500)

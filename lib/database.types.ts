@@ -413,6 +413,54 @@ export type Database = {
           },
         ]
       }
+      consultation_messages: {
+        Row: {
+          id: string
+          appointment_id: string
+          sender_id: string
+          message: string
+          message_type: Database["public"]["Enums"]["message_type_enum"]
+          is_read: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          appointment_id: string
+          sender_id: string
+          message: string
+          message_type?: Database["public"]["Enums"]["message_type_enum"]
+          is_read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          appointment_id?: string
+          sender_id?: string
+          message?: string
+          message_type?: Database["public"]["Enums"]["message_type_enum"]
+          is_read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_messages_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultation_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           appointment_id: string | null
@@ -604,6 +652,7 @@ export type Database = {
         | "no_show"
         | "rescheduled"
       companion_link_status: "pending" | "approved" | "revoked"
+      message_type_enum: "text" | "system" | "video_link" | "voice_link"
       role_type: "patient" | "doctor" | "companion" | "admin"
     }
     CompositeTypes: {
@@ -742,6 +791,7 @@ export const Constants = {
         "rescheduled",
       ],
       companion_link_status: ["pending", "approved", "revoked"],
+      message_type_enum: ["text", "system", "video_link", "voice_link"],
       role_type: ["patient", "doctor", "companion", "admin"],
     },
   },

@@ -1,6 +1,7 @@
 "use client"
 
-import { createBrowserClient, createServerClient } from "@supabase/ssr"
+import { createBrowserClient } from "@supabase/ssr"
+import { createServerClient } from "@supabase/ssr"
 import type { cookies } from "next/headers"
 
 import type { Database } from "./database.types"
@@ -16,10 +17,12 @@ if (!supabaseAnonKey) {
   console.warn("Warning: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set")
 }
 
-// Create a browser client with proper storage configuration
-// This handles session storage across multiple tabs automatically
+// Create browser client with automatic cookie management
+// createBrowserClient automatically syncs session to cookies for middleware access
+// Note: Sessions will be shared across tabs in the same browser (standard behavior)
+// For isolation between different localhost ports, each port instance will have its own cookies
 export const supabaseClient = createBrowserClient<Database>(
-  supabaseUrl as string, 
+  supabaseUrl as string,
   supabaseAnonKey as string
 )
 
