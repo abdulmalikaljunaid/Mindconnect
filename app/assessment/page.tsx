@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { WelcomeStep } from "@/components/assessment/welcome-step"
 import { SymptomInputStep } from "@/components/assessment/symptom-input-step"
 import { AnalysisLoading } from "@/components/assessment/analysis-loading"
@@ -19,6 +20,7 @@ export default function AssessmentPage() {
   const [error, setError] = useState("")
   
   const router = useRouter()
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth()
 
   const handleStartAssessment = () => {
     setCurrentStep('input')
@@ -45,8 +47,31 @@ export default function AssessmentPage() {
         throw new Error(data.error || 'حدث خطأ في التحليل')
       }
 
+      // التحقق من وجود البيانات المطلوبة
+      if (!data.assessment) {
+        console.error('Missing assessment in response:', data)
+        throw new Error('لم يتم الحصول على نتائج التقييم')
+      }
+
+      if (!data.doctors || !Array.isArray(data.doctors)) {
+        console.warn('No doctors in response or invalid format:', data.doctors)
+        // لا نرمي خطأ هنا، قد لا يكون هناك أطباء متاحين
+      }
+
+      // التأكد من أن assessment يحتوي على البيانات المطلوبة
+      if (!data.assessment.conditions || !Array.isArray(data.assessment.conditions)) {
+        console.error('Invalid assessment format:', data.assessment)
+        throw new Error('تنسيق نتائج التقييم غير صحيح')
+      }
+
+      // التأكد من وجود recommendedSpecialties
+      if (!data.assessment.recommendedSpecialties || !Array.isArray(data.assessment.recommendedSpecialties)) {
+        console.warn('Missing recommendedSpecialties, using default')
+        data.assessment.recommendedSpecialties = data.assessment.recommendedSpecialties || ['general-psychiatry']
+      }
+
       setAssessment(data.assessment)
-      setDoctors(data.doctors)
+      setDoctors(data.doctors || [])
       setCurrentStep('results')
     } catch (err) {
       console.error('Assessment error:', err)
@@ -58,12 +83,20 @@ export default function AssessmentPage() {
   }
 
   const handleBookAppointment = (doctor: any) => {
-    // حفظ بيانات الطبيب المختار في localStorage
+    // حفظ بيانات الطبيب المختار في localStorage (يستخدم في book-appointment page)
     localStorage.setItem('selectedDoctor', JSON.stringify(doctor))
     localStorage.setItem('assessmentResult', JSON.stringify(assessment))
     
-    // توجيه لصفحة تسجيل الدخول
-    router.push('/login?redirect=/book-appointment')
+    // التحقق من تسجيل الدخول
+    if (isAuthenticated && user) {
+      // إذا كان المستخدم مسجل الدخول، انتقل مباشرة إلى صفحة الحجز
+      router.push(`/book-appointment?doctorId=${doctor.id}`)
+    } else {
+      // إذا لم يكن مسجل الدخول، انتقل إلى صفحة تسجيل الدخول مع redirect URL يحتوي على doctorId
+      // هذا يضمن أن بعد تسجيل الدخول سيتم إعادة التوجيه للحجز مباشرة
+      const redirectUrl = `/book-appointment?doctorId=${doctor.id}`
+      router.push(`/login?redirect=${encodeURIComponent(redirectUrl)}`)
+    }
   }
 
   const handleBack = () => {

@@ -1,8 +1,13 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Brain } from "lucide-react"
+import { Brain, User } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export function Header() {
+  const { user, isAuthenticated } = useAuth()
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -35,12 +40,23 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" asChild className="hover:text-indigo-600">
-            <Link href="/login">تسجيل الدخول</Link>
-          </Button>
-          <Button asChild className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
-            <Link href="/signup">ابدأ الآن</Link>
-          </Button>
+          {isAuthenticated && user ? (
+            <Button variant="ghost" asChild className="hover:text-indigo-600">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                {user.name || user.email}
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="ghost" asChild className="hover:text-indigo-600">
+                <Link href="/login">تسجيل الدخول</Link>
+              </Button>
+              <Button asChild className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+                <Link href="/signup">ابدأ الآن</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

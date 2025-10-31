@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, Suspense, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { AlertCircle, User, Users, Brain } from "lucide-react"
 import type { UserRole } from "@/lib/auth"
 
-export default function UserSignUpPage() {
+function UserSignUpForm() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -28,6 +28,15 @@ export default function UserSignUpPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { signUp, signInWithGoogle } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // حفظ redirect URL عند تحميل الصفحة
+  useEffect(() => {
+    const redirectUrl = searchParams.get("redirect")
+    if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("//")) {
+      sessionStorage.setItem("redirect_after_signup", redirectUrl)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,12 +55,38 @@ export default function UserSignUpPage() {
     setIsLoading(true)
 
     try {
+      // حفظ redirect URL قبل إنشاء الحساب
+      const redirectUrl = searchParams.get("redirect") || sessionStorage.getItem("redirect_after_signup") || "/dashboard"
+      
+      // حفظ في sessionStorage للاحتياط
+      if (redirectUrl && redirectUrl !== "/dashboard") {
+        sessionStorage.setItem("redirect_after_signup", redirectUrl)
+      }
+      
       await signUp(email, password, name, role)
       
       // Small delay to ensure auth state and profile are fully synced
-      await new Promise(resolve => setTimeout(resolve, 100))
-      // Redirect to dashboard
-      router.replace("/dashboard")
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // الحصول على redirect URL مرة أخرى (من sessionStorage أولاً)
+      let finalRedirectUrl = sessionStorage.getItem("redirect_after_signup")
+      
+      if (!finalRedirectUrl) {
+        finalRedirectUrl = searchParams.get("redirect") || redirectUrl || "/dashboard"
+      }
+      
+      // تنظيف sessionStorage
+      sessionStorage.removeItem("redirect_after_signup")
+      
+      // التحقق من أن redirectUrl هو مسار صالح (لا يحتوي على روابط خارجية)
+      if (finalRedirectUrl && finalRedirectUrl.startsWith("/") && !finalRedirectUrl.startsWith("//")) {
+        console.log("✅ Redirecting after signup to:", finalRedirectUrl)
+        // استخدام window.location للتأكد من إعادة التوجيه
+        window.location.href = finalRedirectUrl
+      } else {
+        console.log("⚠️ Invalid redirect URL, going to dashboard")
+        router.replace("/dashboard")
+      }
     } catch (err: any) {
       setError(err?.message ?? "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")
       setIsLoading(false)
@@ -63,7 +98,10 @@ export default function UserSignUpPage() {
     setIsGoogleLoading(true)
 
     try {
-      await signInWithGoogle(role)
+      // الحصول على redirect URL من query params
+      const redirectUrl = searchParams.get("redirect") || "/dashboard"
+      
+      await signInWithGoogle(role, redirectUrl)
       // OAuth redirect will handle the rest
     } catch (err: any) {
       setError(err?.message ?? "فشل تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.")
@@ -228,5 +266,29 @@ export default function UserSignUpPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function UserSignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-muted px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="mb-4 flex justify-center">
+              <Brain className="h-10 w-10 text-primary" />
+            </div>
+            <CardTitle className="text-center text-2xl">إنشاء حساب</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-8">
+              <Spinner className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <UserSignUpForm />
+    </Suspense>
   )
 }

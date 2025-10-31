@@ -38,7 +38,29 @@ export default function BookAppointmentPage() {
 
   // جلب بيانات الدكتور
   useEffect(() => {
-    if (!doctorId) {
+    // محاولة الحصول على doctorId من URL أولاً، ثم من localStorage
+    let finalDoctorId = doctorId;
+    
+    if (!finalDoctorId) {
+      // محاولة استعادة بيانات الطبيب من localStorage (عند إعادة التوجيه بعد تسجيل الدخول)
+      const savedDoctor = localStorage.getItem('selectedDoctor');
+      if (savedDoctor) {
+        try {
+          const doctor = JSON.parse(savedDoctor);
+          if (doctor.id) {
+            finalDoctorId = doctor.id;
+            // تحديث URL بدون إعادة تحميل الصفحة
+            router.replace(`/book-appointment?doctorId=${doctor.id}`, { scroll: false });
+            // الخروج مبكراً، سيتم إعادة تشغيل useEffect مع doctorId الجديد
+            return;
+          }
+        } catch (e) {
+          console.error('Error parsing saved doctor:', e);
+        }
+      }
+    }
+    
+    if (!finalDoctorId) {
       router.push("/find-doctors");
       return;
     }
@@ -50,7 +72,7 @@ export default function BookAppointmentPage() {
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles")
           .select("id, name, email, bio, is_approved, role")
-          .eq("id", doctorId)
+          .eq("id", finalDoctorId)
           .single();
 
         if (profileError) throw profileError;
@@ -63,12 +85,12 @@ export default function BookAppointmentPage() {
           supabaseClient
             .from("doctor_profiles")
             .select("*")
-            .eq("profile_id", doctorId)
+            .eq("profile_id", finalDoctorId)
             .single(),
           supabaseClient
             .from("doctor_specialties")
             .select("specialties(name)")
-            .eq("doctor_id", doctorId)
+            .eq("doctor_id", finalDoctorId)
         ]);
 
         const { data: doctorProfileData, error: doctorProfileError } = doctorProfileResult;
@@ -153,6 +175,9 @@ export default function BookAppointmentPage() {
       });
 
       if (success) {
+        // تنظيف localStorage بعد نجاح الحجز
+        localStorage.removeItem('selectedDoctor');
+        localStorage.removeItem('assessmentResult');
         router.push("/booking-confirmation");
       }
     } catch (error) {

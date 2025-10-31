@@ -187,7 +187,9 @@ function computeMatchScore(required: Specialty[], doctorSpecialties: Specialty[]
   }
 
   const coverageScore = (totalMatches / required.length) * 70
-  const specializationWeight = (totalMatches / doctorSpecialties.length) * 30
+  const specializationWeight = doctorSpecialties.length > 0 
+    ? (totalMatches / doctorSpecialties.length) * 30 
+    : 0
 
   return Math.round(Math.min(coverageScore + specializationWeight, 100))
 }
@@ -219,7 +221,7 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
         experience_years,
         languages,
         metadata,
-        profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved),
+        profile:profiles!doctor_profiles_profile_id_fkey!inner (id, name, avatar_url, bio, is_approved, role),
         doctor_specialties!inner (
           specialties!inner (id, name, slug)
         )
@@ -233,9 +235,15 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
       throw error
     }
 
+    // فلترة إضافية للتأكد من أن جميع الأطباء موافق عليهم
     const doctors = (data as SelectedDoctorProfileRow[])
       .map(buildDoctor)
       .filter((doc): doc is Doctor => Boolean(doc))
+      .filter((doc) => {
+        // فلترة إضافية للتأكد من الموافقة
+        const profileData = data?.find((row) => row.profile_id === doc.id)?.profile
+        return profileData?.is_approved === true && profileData?.role === "doctor"
+      })
 
     if (doctors.length === 0) {
       throw new Error("No approved doctors found")
@@ -244,7 +252,8 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
     return rankDoctors(doctors, requiredSpecialties)
   } catch (err) {
     console.warn("Falling back to default doctor list", err)
-    return rankDoctors(FALLBACK_DOCTORS, requiredSpecialties)
+    // لا نرجع الأطباء الافتراضيين - نرجع قائمة فارغة بدلاً من ذلك
+    return []
   }
 }
 
@@ -259,27 +268,30 @@ export async function getDoctorById(id: string): Promise<Doctor | null> {
         experience_years,
         languages,
         metadata,
-        profile:profiles!doctor_profiles_profile_id_fkey (id, name, avatar_url, bio, is_approved),
+        profile:profiles!doctor_profiles_profile_id_fkey!inner (id, name, avatar_url, bio, is_approved, role),
         doctor_specialties (
           specialties (id, name, slug)
         )
       `,
       )
       .eq("profile_id", id)
+      .eq("profile.is_approved", true)
+      .eq("profile.role", "doctor")
       .maybeSingle()
 
     if (error || !data) {
       throw error ?? new Error("Doctor not found")
     }
 
-    return buildDoctor(data as SelectedDoctorProfileRow)
-  } catch (error) {
-    const fallback = FALLBACK_DOCTORS.find((doctor) => doctor.id === id)
-    if (!fallback) {
-      console.error("Failed to fetch doctor by id", error)
+    // التحقق الإضافي من الموافقة
+    if (!data.profile?.is_approved || data.profile?.role !== "doctor") {
       return null
     }
-    return fallback
+
+    return buildDoctor(data as SelectedDoctorProfileRow)
+  } catch (error) {
+    console.error("Failed to fetch doctor by id", error)
+    return null
   }
 }
 
