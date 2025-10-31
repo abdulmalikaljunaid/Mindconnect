@@ -270,6 +270,29 @@ export function useAdminDoctors(): DoctorsResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, user?.role])
 
+  // Realtime subscription for admin view
+  useEffect(() => {
+    if (!user || user.role !== "admin") return
+
+    const channel = supabaseClient
+      .channel(`admin-doctors-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        fetchDoctors()
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "doctor_profiles" }, () => {
+        fetchDoctors()
+      })
+      .subscribe()
+
+    const poll = setInterval(fetchDoctors, 30000)
+
+    return () => {
+      clearInterval(poll)
+      supabaseClient.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.role])
+
   const approveDoctor = async (doctorId: string) => {
     const approvedAt = new Date().toISOString()
     const adminId = user?.id
@@ -353,26 +376,12 @@ export function useAdminDoctors(): DoctorsResult {
   }
 }
 
-// Hook للمرضى لعرض الأطباء المعتمدين فقط
-// Global cache for approved doctors (shared across all hook instances)
-let globalDoctorsCache: DoctorWithProfile[] | null = null;
-let globalCacheTimestamp: number = 0;
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
-
 export function useApprovedDoctors() {
   const [approved, setApproved] = useState<DoctorWithProfile[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchApprovedDoctors = async () => {
-    // Return cached data if still valid
-    const now = Date.now();
-    if (globalDoctorsCache && (now - globalCacheTimestamp) < CACHE_DURATION) {
-      setApproved(globalDoctorsCache);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true)
     setError(null)
 
@@ -390,11 +399,6 @@ export function useApprovedDoctors() {
       const doctors = (profilesData ?? []).map(mapDoctor)
       // فلترة الأطباء المعتمدين فقط
       const approvedDoctors = doctors.filter((d) => d.status === "approved");
-      
-      // Cache the results globally
-      globalDoctorsCache = approvedDoctors;
-      globalCacheTimestamp = now;
-      
       setApproved(approvedDoctors)
     } catch (err: any) {
       console.error("Error fetching approved doctors:", err)
@@ -406,6 +410,22 @@ export function useApprovedDoctors() {
 
   useEffect(() => {
     fetchApprovedDoctors()
+    // Realtime subscription for profiles and doctor_profiles
+    const channel = supabaseClient
+      .channel(`doctors-approved-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        fetchApprovedDoctors()
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "doctor_profiles" }, () => {
+        fetchApprovedDoctors()
+      })
+      .subscribe()
+
+    const poll = setInterval(fetchApprovedDoctors, 30000)
+    return () => {
+      clearInterval(poll)
+      supabaseClient.removeChannel(channel)
+    }
   }, [])
 
   return {
