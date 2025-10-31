@@ -35,7 +35,7 @@ export function isProtectedRoute(pathname: string): boolean {
     "/users",
     "/settings",
     "/symptoms-matcher",
-    "/assessment",
+    // "/assessment" - removed - assessment should be public, only booking requires auth
   ]
   
   return protectedPaths.some(path => pathname.startsWith(path))
@@ -51,6 +51,7 @@ export function isPublicRoute(pathname: string): boolean {
     "/signup",
     "/about",
     "/contact",
+    "/assessment", // assessment is public - users can take assessment without signing in
   ]
   
   return publicPaths.some(path => pathname === path || pathname.startsWith(path))

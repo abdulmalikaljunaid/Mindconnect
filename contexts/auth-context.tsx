@@ -9,7 +9,7 @@ interface AuthContextType {
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<UserProfile>
   signUp: (email: string, password: string, name: string, role: UserProfile["role"]) => Promise<UserProfile>
-  signInWithGoogle: (role: UserRole) => Promise<void>
+  signInWithGoogle: (role: UserRole, redirectUrl?: string) => Promise<void>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -128,8 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signInWithGoogle = async (role: UserRole) => {
-    await authService.signInWithGoogle(role)
+  const signInWithGoogle = async (role: UserRole, redirectUrl?: string) => {
+    await authService.signInWithGoogle(role, redirectUrl)
     // OAuth redirect will handle the rest
   }
 

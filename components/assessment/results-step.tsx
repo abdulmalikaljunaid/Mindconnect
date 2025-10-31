@@ -44,7 +44,7 @@ export function ResultsStep({
       <div className="space-y-6">
         <h3 className="text-xl font-semibold">نتائج التقييم</h3>
         
-        {assessment.conditions.length > 0 && (
+        {assessment.conditions && assessment.conditions.length > 0 ? (
           <div className="space-y-4">
             {assessment.conditions.length === 1 ? (
               <ConditionCard condition={assessment.conditions[0]} />
@@ -67,6 +67,13 @@ export function ResultsStep({
               </div>
             )}
           </div>
+        ) : (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              لم يتم العثور على حالات نفسية محتملة. يُنصح بمراجعة طبيب نفسي للتقييم الدقيق.
+            </AlertDescription>
+          </Alert>
         )}
 
         {assessment.notes && (

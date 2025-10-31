@@ -155,7 +155,7 @@ export const authService = {
     return this.getCurrentUser()
   },
 
-  async signInWithGoogle(role: UserRole) {
+  async signInWithGoogle(role: UserRole, redirectUrl?: string) {
     // منع استخدام Google OAuth للأطباء والإداريين
     if (role === "admin" || role === "doctor") {
       throw new Error("Google sign-in is only available for patients and companions")
@@ -170,10 +170,16 @@ export const authService = {
       sessionStorage.setItem("oauth_role", role)
     }
 
+    // بناء redirectTo URL مع role و redirect إذا كان متوفراً
+    let callbackUrl = `${window.location.origin}/auth/callback?role=${role}`
+    if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("//")) {
+      callbackUrl += `&next=${encodeURIComponent(redirectUrl)}`
+    }
+
     const { data, error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?role=${role}`,
+        redirectTo: callbackUrl,
         queryParams: {
           access_type: "offline",
           prompt: "consent",

@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ import { AlertCircle, User, Users, Brain, X } from "lucide-react"
 import { useEmailSuggestions } from "@/hooks/use-email-suggestions"
 import type { UserRole } from "@/lib/auth"
 
-export default function UserLoginPage() {
+function UserLoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<UserRole>("patient")
@@ -30,7 +30,16 @@ export default function UserLoginPage() {
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([])
   const { signIn, signInWithGoogle } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { savedEmails, saveEmail, removeEmail } = useEmailSuggestions()
+
+  // حفظ redirect URL عند تحميل الصفحة
+  useEffect(() => {
+    const redirectUrl = searchParams.get("redirect")
+    if (redirectUrl && redirectUrl.startsWith("/") && !redirectUrl.startsWith("//")) {
+      sessionStorage.setItem("redirect_after_login", redirectUrl)
+    }
+  }, [searchParams])
 
   // Filter suggestions based on input
   useEffect(() => {
@@ -52,9 +61,39 @@ export default function UserLoginPage() {
     setIsLoading(true)
 
     try {
+      // حفظ redirect URL قبل تسجيل الدخول (في حالة فشل query params)
+      const redirectUrl = searchParams.get("redirect") || sessionStorage.getItem("redirect_after_login") || "/dashboard"
+      
+      // حفظ في sessionStorage للاحتياط
+      if (redirectUrl && redirectUrl !== "/dashboard") {
+        sessionStorage.setItem("redirect_after_login", redirectUrl)
+      }
+      
       await signIn(email.trim(), password)
       saveEmail(email.trim())
-      router.replace("/dashboard")
+      
+      // انتظار قليل لضمان تحديث auth state
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // الحصول على redirect URL مرة أخرى (من sessionStorage أولاً، ثم query params)
+      let finalRedirectUrl = sessionStorage.getItem("redirect_after_login")
+      
+      if (!finalRedirectUrl) {
+        finalRedirectUrl = searchParams.get("redirect") || redirectUrl || "/dashboard"
+      }
+      
+      // تنظيف sessionStorage
+      sessionStorage.removeItem("redirect_after_login")
+      
+      // التحقق من أن redirectUrl هو مسار صالح (لا يحتوي على روابط خارجية)
+      if (finalRedirectUrl && finalRedirectUrl.startsWith("/") && !finalRedirectUrl.startsWith("//")) {
+        console.log("✅ Redirecting after login to:", finalRedirectUrl)
+        // استخدام window.location للتأكد من إعادة التوجيه
+        window.location.href = finalRedirectUrl
+      } else {
+        console.log("⚠️ Invalid redirect URL, going to dashboard")
+        router.replace("/dashboard")
+      }
     } catch (err: any) {
       setError(err?.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.")
       setIsLoading(false)
@@ -76,7 +115,10 @@ export default function UserLoginPage() {
     setIsGoogleLoading(true)
 
     try {
-      await signInWithGoogle(role)
+      // الحصول على redirect URL من query params
+      const redirectUrl = searchParams.get("redirect") || "/dashboard"
+      
+      await signInWithGoogle(role, redirectUrl)
       // OAuth redirect will handle the rest
     } catch (err: any) {
       setError(err?.message ?? "فشل تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.")
@@ -251,5 +293,37 @@ export default function UserLoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function UserLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-muted px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="mb-4 flex justify-center">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+                  <Brain className="h-6 w-6 text-primary-foreground" />
+                </div>
+                <span className="text-2xl font-semibold">Mindconnect</span>
+              </Link>
+            </div>
+            <CardTitle className="text-center text-2xl flex items-center gap-2">
+              <User className="h-6 w-6" />
+              تسجيل دخول المريض / المرافق
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-8">
+              <Spinner className="h-8 w-8" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <UserLoginForm />
+    </Suspense>
   )
 }
