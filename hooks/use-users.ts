@@ -53,21 +53,6 @@ export function useUsers(): UsersResult {
 
   useEffect(() => {
     fetchUsers()
-
-    // Realtime subscription to profiles changes
-    const channel = supabaseClient
-      .channel(`users-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
-        fetchUsers()
-      })
-      .subscribe()
-
-    const poll = setInterval(fetchUsers, 30000)
-
-    return () => {
-      clearInterval(poll)
-      supabaseClient.removeChannel(channel)
-    }
   }, [])
 
   return {

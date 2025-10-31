@@ -16,7 +16,12 @@ if (!supabaseAnonKey) {
   console.warn("Warning: NEXT_PUBLIC_SUPABASE_ANON_KEY is not set")
 }
 
-export const supabaseClient = createBrowserClient<Database>(supabaseUrl as string, supabaseAnonKey as string)
+// Create a browser client with proper storage configuration
+// This handles session storage across multiple tabs automatically
+export const supabaseClient = createBrowserClient<Database>(
+  supabaseUrl as string, 
+  supabaseAnonKey as string
+)
 
 export const createSupabaseServerClient = (
   cookieStore: Awaited<ReturnType<typeof cookies>>

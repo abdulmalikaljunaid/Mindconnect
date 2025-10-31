@@ -48,7 +48,9 @@ export default function UserSignUpPage() {
     try {
       await signUp(email, password, name, role)
       
-      // Redirect immediately without delay
+      // Small delay to ensure auth state and profile are fully synced
+      await new Promise(resolve => setTimeout(resolve, 100))
+      // Redirect to dashboard
       router.replace("/dashboard")
     } catch (err: any) {
       setError(err?.message ?? "فشل إنشاء الحساب. يرجى المحاولة مرة أخرى.")

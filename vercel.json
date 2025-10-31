@@ -1,7 +1,27 @@
 {
 	"installCommand": "npm install",
 	"buildCommand": "npm run build",
-	"framework": "nextjs"
+	"framework": "nextjs",
+	"headers": [
+		{
+			"source": "/auth/callback",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "no-store, must-revalidate"
+				}
+			]
+		},
+		{
+			"source": "/dashboard/:path*",
+			"headers": [
+				{
+					"key": "Cache-Control",
+					"value": "private, no-cache, no-store, must-revalidate"
+				}
+			]
+		}
+	]
 }
 
 

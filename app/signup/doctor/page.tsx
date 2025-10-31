@@ -205,14 +205,15 @@ export default function DoctorSignUpPage() {
 
         setUploadProgress("تم إرسال الطلب بنجاح! ✓")
         
-        // Show success toast and redirect immediately
+        // Show success toast and redirect with small delay
         toast({
           title: "✅ تم إنشاء الحساب بنجاح!",
           description: "جاري تحويلك إلى صفحة الانتظار...",
           duration: 2000,
         })
 
-        // Redirect immediately without delay
+        // Small delay to ensure auth state is fully synced
+        await new Promise(resolve => setTimeout(resolve, 100))
         router.replace("/pending-approval")
       } else {
         // For non-doctor roles (admin, etc)
@@ -221,7 +222,8 @@ export default function DoctorSignUpPage() {
           description: "جاري تحويلك إلى لوحة التحكم...",
         })
         
-        // Redirect immediately
+        // Small delay to ensure auth state is fully synced
+        await new Promise(resolve => setTimeout(resolve, 100))
         router.replace("/dashboard")
       }
     } catch (err: any) {

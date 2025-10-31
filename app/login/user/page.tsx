@@ -55,7 +55,9 @@ export default function UserLoginPage() {
       await signIn(email, password)
       // Save email on successful login
       saveEmail(email)
-      // Redirect immediately without delay
+      // Small delay to ensure auth state is fully synced
+      await new Promise(resolve => setTimeout(resolve, 100))
+      // Redirect to dashboard
       router.replace("/dashboard")
     } catch (err) {
       setError("البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.")

@@ -100,17 +100,27 @@ export async function GET(request: Request) {
       }
     }
 
-    // Redirect to dashboard or specified next URL
-    return NextResponse.redirect(new URL(next, requestUrl.origin))
+    // Create redirect response with proper cache headers
+    const redirectUrl = new URL(next, requestUrl.origin)
+    const response = NextResponse.redirect(redirectUrl)
+    
+    // Set cache control headers to prevent caching
+    response.headers.set("Cache-Control", "no-store, must-revalidate")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+    
+    return response
   } catch (err: any) {
     console.error("Unexpected error in OAuth callback:", err)
     const errorMessage = err?.message || err?.toString() || "حدث خطأ غير متوقع"
-    return NextResponse.redirect(
+    const errorResponse = NextResponse.redirect(
       new URL(
         `/login/user?error=${encodeURIComponent(errorMessage)}`,
         requestUrl.origin
       )
     )
+    errorResponse.headers.set("Cache-Control", "no-store, must-revalidate")
+    return errorResponse
   }
 }
 

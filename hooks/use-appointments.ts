@@ -57,10 +57,7 @@ const APPOINTMENT_SELECT = `
   cancelled_at,
   doctor_id,
   patient_id,
-  companion_id,
-  doctor:profiles!appointments_doctor_id_fkey(name),
-  patient:profiles!appointments_patient_id_fkey(name),
-  companion:profiles!appointments_companion_id_fkey(name)
+  companion_id
 `
 
 type SelectedAppointment = Pick<
@@ -81,7 +78,42 @@ type SelectedAppointment = Pick<
   | "companion_id"
 >
 
-const mapAppointment = (row: any): AppointmentListItem => {
+const mapAppointment = async (row: SelectedAppointment): Promise<AppointmentListItem> => {
+  // Fetch related names separately to avoid embedding issues
+  let doctorName: string | null = null
+  let patientName: string | null = null
+  let companionName: string | null = null
+
+  // Get doctor name
+  if (row.doctor_id) {
+    const { data: doctorProfile } = await supabaseClient
+      .from("profiles")
+      .select("name")
+      .eq("id", row.doctor_id)
+      .single()
+    doctorName = doctorProfile?.name ?? null
+  }
+
+  // Get patient name
+  if (row.patient_id) {
+    const { data: patientProfile } = await supabaseClient
+      .from("profiles")
+      .select("name")
+      .eq("id", row.patient_id)
+      .single()
+    patientName = patientProfile?.name ?? null
+  }
+
+  // Get companion name
+  if (row.companion_id) {
+    const { data: companionProfile } = await supabaseClient
+      .from("profiles")
+      .select("name")
+      .eq("id", row.companion_id)
+      .single()
+    companionName = companionProfile?.name ?? null
+  }
+
   return {
     id: row.id,
     scheduledAt: row.scheduled_at,
@@ -94,9 +126,9 @@ const mapAppointment = (row: any): AppointmentListItem => {
     rejectionReason: row.rejection_reason ?? null,
     confirmedAt: row.confirmed_at ?? null,
     cancelledAt: row.cancelled_at ?? null,
-    doctorName: row.doctor?.name ?? null,
-    patientName: row.patient?.name ?? null,
-    companionName: row.companion?.name ?? null,
+    doctorName,
+    patientName,
+    companionName,
   }
 }
 
@@ -138,7 +170,8 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
       setError(error.message)
       setAppointments([])
     } else {
-      const mappedAppointments = (data ?? []).map(mapAppointment)
+      // Map appointments with async function
+      const mappedAppointments = await Promise.all((data ?? []).map(mapAppointment))
       setAppointments(mappedAppointments)
     }
 
@@ -184,8 +217,6 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
   // تأكيد موعد من قبل الدكتور
   const confirmAppointment = async (payload: AppointmentActionPayload): Promise<boolean> => {
     try {
-      // Optimistic update
-      setAppointments((prev) => prev.map((apt) => apt.id === payload.appointmentId ? { ...apt, status: "confirmed", confirmedAt: new Date().toISOString(), notes: payload.notes ?? apt.notes } : apt))
       const { error } = await supabaseClient
         .from("appointments")
         .update({
@@ -210,8 +241,6 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
         description: error.message || "فشل في تأكيد الموعد",
         variant: "destructive",
       })
-      // Revert optimistic change on error
-      await fetchAppointments()
       return false
     }
   }
@@ -219,8 +248,6 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
   // رفض موعد من قبل الدكتور
   const rejectAppointment = async (payload: AppointmentActionPayload): Promise<boolean> => {
     try {
-      // Optimistic update
-      setAppointments((prev) => prev.map((apt) => apt.id === payload.appointmentId ? { ...apt, status: "cancelled", rejectionReason: payload.rejectionReason ?? apt.rejectionReason, cancelledAt: new Date().toISOString() } : apt))
       const { error } = await supabaseClient
         .from("appointments")
         .update({
@@ -245,7 +272,6 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
         description: error.message || "فشل في رفض الموعد",
         variant: "destructive",
       })
-      await fetchAppointments()
       return false
     }
   }
@@ -253,8 +279,6 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
   // إلغاء موعد من قبل المريض
   const cancelAppointment = async (appointmentId: string, notes?: string): Promise<boolean> => {
     try {
-      // Optimistic update
-      setAppointments((prev) => prev.map((apt) => apt.id === appointmentId ? { ...apt, status: "cancelled", cancelledAt: new Date().toISOString(), notes: notes ?? apt.notes } : apt))
       const { error } = await supabaseClient
         .from("appointments")
         .update({
@@ -279,7 +303,6 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
         description: error.message || "فشل في إلغاء الموعد",
         variant: "destructive",
       })
-      await fetchAppointments()
       return false
     }
   }
@@ -302,32 +325,7 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
   }
 
   useEffect(() => {
-    let active = true
     fetchAppointments()
-
-    // Realtime subscription
-    const channel = supabaseClient
-      .channel(`appointments-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload) => {
-        const row: any = (payload as any).new ?? (payload as any).old
-        if (!row) return
-        // Lightweight client-side visibility filter: refetch if current list may include this row
-        if ([row.patient_id, row.doctor_id, row.companion_id].some(Boolean)) {
-          if (active) fetchAppointments()
-        }
-      })
-      .subscribe()
-
-    // Polling fallback (every 30s)
-    const poll = setInterval(() => {
-      if (active) fetchAppointments()
-    }, 30000)
-
-    return () => {
-      active = false
-      clearInterval(poll)
-      supabaseClient.removeChannel(channel)
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
