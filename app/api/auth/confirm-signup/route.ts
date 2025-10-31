@@ -7,6 +7,9 @@ interface ConfirmSignupRequest {
   email?: string
 }
 
+// Always dynamic to reflect immediate auth state changes
+export const dynamic = "force-dynamic"
+
 export async function POST(request: Request) {
   try {
     const { userId, email } = (await request.json()) as ConfirmSignupRequest

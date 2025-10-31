@@ -4,6 +4,10 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
+// Ensure dynamic rendering to avoid any static caching of auth-dependent UI
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   console.warn("Warning: NEXT_PUBLIC_SUPABASE_URL is not set")
 }

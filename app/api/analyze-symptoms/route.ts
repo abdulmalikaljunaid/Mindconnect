@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { analyzeSymptoms } from "@/lib/ai/gemini"
 import { findBestMatchingDoctors } from "@/lib/doctors"
 
+// Force dynamic to prevent any caching of AI and DB results
+export const dynamic = "force-dynamic"
+
 export async function POST(request: NextRequest) {
   try {
     const { symptoms } = await request.json()
