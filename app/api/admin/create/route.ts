@@ -23,6 +23,9 @@ const supabaseAdmin = supabaseUrl && serviceRoleKey ? createClient(
   }
 ) : null
 
+// Ensure no caching for admin creation endpoint
+export const dynamic = "force-dynamic"
+
 export async function POST(request: Request) {
   try {
     // التحقق من وجود supabaseAdmin
