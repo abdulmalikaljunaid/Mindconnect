@@ -22,10 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initCompleteRef = useRef(false)
 
   useEffect(() => {
+    if (initCompleteRef.current) return
+
     const init = async () => {
-      // Prevent multiple initializations
-      if (initCompleteRef.current) return
-      
       try {
         const currentUser = await authService.getCurrentUser()
         setUser(currentUser)
@@ -40,32 +39,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     init()
 
-    // Listen for auth state changes
-    const { data: listener } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event)
-      
+    // Listen for auth state changes - handle all important events including token refresh
+    const { data: { subscription } } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, { hasSession: !!session })
+
       if (event === "SIGNED_OUT" || !session) {
         setUser(null)
         return
       }
 
-      // Only update user on sign in/up events, NOT on token refresh
-      // Token refresh is handled automatically by middleware and doesn't need manual updates
-      if (event === "SIGNED_IN") {
+      // Handle sign in
+      if (event === "SIGNED_IN" && session?.user) {
         try {
           const currentUser = await authService.getCurrentUser()
           setUser(currentUser)
         } catch (error) {
-          console.error("Failed to fetch user after auth state change:", error)
+          console.error("Failed to fetch user after sign in:", error)
+          setUser(null)
+        }
+        return
+      }
+
+      // Handle token refresh - critical for maintaining session after ~1 minute
+      if (event === "TOKEN_REFRESHED" && session?.user) {
+        try {
+          // Token was refreshed successfully, ensure user state is up to date
+          const currentUser = await authService.getCurrentUser()
+          if (currentUser) {
+            setUser(currentUser)
+          }
+        } catch (error) {
+          console.error("Failed to refresh user after token refresh:", error)
+          // Don't clear user on token refresh error, token was refreshed successfully
+        }
+        return
+      }
+
+      // Handle initial session - update user if we have a session but no user state
+      if (event === "INITIAL_SESSION" && session?.user) {
+        try {
+          const currentUser = await authService.getCurrentUser()
+          setUser(currentUser)
+        } catch (error) {
+          console.error("Failed to fetch user on initial session:", error)
+          setUser(null)
         }
       }
-      // Ignore TOKEN_REFRESHED to prevent unnecessary updates and cross-tab conflicts
     })
 
     return () => {
-      listener.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
-  }, [])
+  }, []) // Empty deps - only run once on mount
 
   const signIn = async (email: string, password: string): Promise<UserProfile> => {
     try {
@@ -109,16 +134,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    console.log("Signing out...")
     try {
       await authService.signOut()
       setUser(null)
-      console.log("Sign out successful")
     } catch (error) {
       console.error("Sign out error:", error)
-      // Clear user state even if signOut fails
       setUser(null)
-      throw error
     }
   }
 

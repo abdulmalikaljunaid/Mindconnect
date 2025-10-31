@@ -22,6 +22,21 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
   const { messages, isLoading, error, sendMessage, realtimeStatus } =
     useConsultationMessages(appointmentId);
 
+  // Log messages for debugging
+  useEffect(() => {
+    console.log("💬 ChatWindow: Messages updated:", {
+      total: messages.length,
+      messages: messages.map(m => ({
+        id: m.id,
+        sender_id: m.sender_id,
+        sender_name: m.sender?.name,
+        is_own: m.sender_id === user?.id,
+        message_preview: m.message.substring(0, 30)
+      })),
+      current_user_id: user?.id
+    });
+  }, [messages, user?.id]);
+
   // Auto-scroll إلى الرسالة الأخيرة
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -57,21 +72,29 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
 
   return (
     <div className="flex flex-col h-full bg-background border rounded-lg overflow-hidden">
-      {/* Connection Status Bar */}
-      {!realtimeStatus.isConnected && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 flex items-center gap-2 text-sm">
-          <WifiOff className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+      {/* Connection Status Bar - فقط عرضه عند وجود مشكلة */}
+      {!realtimeStatus.isConnected && realtimeStatus.error && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 flex items-center gap-2 text-sm border-b">
+          <WifiOff className="h-4 w-4 text-yellow-600 dark:text-yellow-400 animate-pulse" />
           <span className="text-yellow-700 dark:text-yellow-300">
-            محاولة الاتصال...
+            {realtimeStatus.error}
           </span>
         </div>
       )}
 
-      {realtimeStatus.isConnected && (
-        <div className="bg-green-50 dark:bg-green-900/20 px-4 py-2 flex items-center gap-2 text-sm">
-          <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+      {/* Connection Status - فقط للعرض، Polling يعمل دائماً */}
+      {realtimeStatus.isConnected ? (
+        <div className="bg-green-50 dark:bg-green-900/20 px-4 py-2 flex items-center gap-2 text-xs border-b">
+          <Wifi className="h-3 w-3 text-green-600 dark:text-green-400" />
           <span className="text-green-700 dark:text-green-300">
-            متصل
+            متصل (Realtime + Polling)
+          </span>
+        </div>
+      ) : (
+        <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 flex items-center gap-2 text-xs border-b">
+          <Wifi className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+          <span className="text-blue-700 dark:text-blue-300">
+            متصل (Polling فقط)
           </span>
         </div>
       )}
@@ -112,12 +135,12 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
             onKeyDown={handleKeyPress}
             placeholder="اكتب رسالة..."
             className="min-h-[60px] max-h-[120px] resize-none"
-            disabled={isSending || !realtimeStatus.isConnected}
+            disabled={isSending}
             rows={2}
           />
           <Button
             onClick={handleSend}
-            disabled={!messageText.trim() || isSending || !realtimeStatus.isConnected}
+            disabled={!messageText.trim() || isSending}
             size="icon"
             className="h-[60px] w-[60px] flex-shrink-0"
           >

@@ -4,7 +4,6 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
   ConsultationMessage,
-  ConsultationMessageInsert,
   RealtimeStatus,
 } from "@/types/consultation";
 
@@ -29,9 +28,10 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
   });
   const { user } = useAuth();
   const { toast } = useToast();
-  const channelRef = useRef<any>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabaseClient.channel> | null>(null);
 
-  // جلب الرسائل من قاعدة البيانات
+  // جلب الرسائل من قاعدة البيانات - بسيط ومباشر
   const fetchMessages = useCallback(async () => {
     if (!appointmentId) {
       setMessages([]);
@@ -39,63 +39,90 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-
     try {
-      // جلب الرسائل مع معلومات المرسل
-      const { data, error: fetchError } = await supabaseClient
-        .from("messages" as const)
-        .select(
-          `
-          id,
-          appointment_id,
-          sender_id,
-          body,
-          created_at,
-          sender:profiles!sender_id (
-            id,
-            name,
-            avatar_url,
-            role
-          )
-        `
-        )
+      // جلب الرسائل من جدول consultation_messages
+      const { data: messagesData, error: fetchError } = await supabaseClient
+        .from("consultation_messages")
+        .select("id, appointment_id, sender_id, message, message_type, is_read, created_at")
         .eq("appointment_id", appointmentId)
         .order("created_at", { ascending: true });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error("❌ Fetch error:", fetchError);
+        throw fetchError;
+      }
 
-      // تحويل البيانات إلى النوع المطلوب
-      const formattedMessages: ConsultationMessage[] = (data || []).map((msg: any) => ({
-        id: msg.id,
-        appointment_id: msg.appointment_id,
-        sender_id: msg.sender_id,
-        message: msg.body,
-        message_type: "text",
-        is_read: false,
-        created_at: msg.created_at,
-        sender: msg.sender && msg.sender.role !== "admin"
-          ? {
-              id: msg.sender.id,
-              name: msg.sender.name,
-              avatar_url: msg.sender.avatar_url,
-              role: msg.sender.role as "patient" | "doctor" | "companion",
-            }
-          : undefined,
-      }));
+      if (!messagesData || messagesData.length === 0) {
+        setMessages([]);
+        setIsLoading(false);
+        return;
+      }
 
+      // جلب معلومات المرسلين بشكل منفصل لكل رسالة
+      const formattedMessages: ConsultationMessage[] = await Promise.all(
+        messagesData.map(async (msg: any) => {
+          try {
+            const { data: sender } = await supabaseClient
+              .from("profiles")
+              .select("id, name, avatar_url, role")
+              .eq("id", msg.sender_id)
+              .single();
+
+            return {
+              id: msg.id,
+              appointment_id: msg.appointment_id,
+              sender_id: msg.sender_id,
+              message: msg.message,
+              message_type: (msg.message_type || "text") as "text" | "system" | "video_link" | "voice_link",
+              is_read: msg.is_read || false,
+              created_at: msg.created_at,
+              sender: sender && sender.role !== "admin"
+                ? {
+                    id: sender.id,
+                    name: sender.name,
+                    avatar_url: sender.avatar_url,
+                    role: sender.role as "patient" | "doctor" | "companion",
+                  }
+                : undefined,
+            };
+          } catch (err) {
+            // إذا فشل جلب معلومات المرسل، نعيد رسالة بدون معلومات المرسل
+            console.warn("Failed to fetch sender for message:", msg.id);
+            return {
+              id: msg.id,
+              appointment_id: msg.appointment_id,
+              sender_id: msg.sender_id,
+              message: msg.message,
+              message_type: (msg.message_type || "text") as "text" | "system" | "video_link" | "voice_link",
+              is_read: msg.is_read || false,
+              created_at: msg.created_at,
+              sender: undefined,
+            };
+          }
+        })
+      );
+
+      // تحديث الرسائل دائماً
       setMessages(formattedMessages);
+      setIsLoading(false);
+      
+      console.log(`✅ Loaded ${formattedMessages.length} messages for appointment: ${appointmentId}`);
+      if (formattedMessages.length > 0) {
+        console.log("📨 Message IDs:", formattedMessages.map(m => ({
+          id: m.id.substring(0, 8),
+          sender: m.sender?.name || m.sender_id.substring(0, 8),
+          preview: m.message.substring(0, 30)
+        })));
+      }
     } catch (err: any) {
-      console.error("Error fetching messages:", err);
+      console.error("❌ Error fetching messages:", err);
       setError(err.message || "فشل في جلب الرسائل");
       setMessages([]);
-    } finally {
       setIsLoading(false);
     }
   }, [appointmentId]);
 
-  // إرسال رسالة جديدة
+  // إرسال رسالة - بسيط ومباشر
   const sendMessage = useCallback(
     async (
       message: string,
@@ -106,22 +133,29 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
       }
 
       try {
-        const newMessage: { appointment_id: string; sender_id: string; body: string } = {
-          appointment_id: appointmentId,
-          sender_id: user.id,
-          body: message.trim(),
-        };
+        const { data, error: insertError } = await supabaseClient
+          .from("consultation_messages")
+          .insert({
+            appointment_id: appointmentId,
+            sender_id: user.id,
+            message: message.trim(),
+            message_type: messageType,
+          })
+          .select()
+          .single();
 
-        const { error: insertError } = await supabaseClient
-          .from("messages" as const)
-          .insert(newMessage);
+        if (insertError) {
+          console.error("❌ Insert error:", insertError);
+          throw insertError;
+        }
 
-        if (insertError) throw insertError;
+        console.log("✅ Message saved to DB:", data.id);
 
-        // الرسالة ستُضاف تلقائياً عبر Realtime subscription
+        // لا حاجة لـ fetchMessages هنا - Realtime سيتولى ذلك تلقائياً
+        
         return true;
       } catch (err: any) {
-        console.error("Error sending message:", err);
+        console.error("❌ Error sending message:", err);
         toast({
           title: "خطأ",
           description: err.message || "فشل في إرسال الرسالة",
@@ -130,93 +164,132 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
         return false;
       }
     },
-    [appointmentId, user, toast]
+    [appointmentId, user, toast, fetchMessages]
   );
 
-  // تحديث حالة القراءة
-  const markAsRead = useCallback(
-    async (messageIds: string[]) => {
-      if (!messageIds.length || !user) return;
-
-      // مخطط الرسائل الحالي لا يحتوي على حقل is_read؛ لا توجد عملية مطلوبة
+  const markAsRead = useCallback(async (messageIds: string[]) => {
+    if (!appointmentId || !user || messageIds.length === 0) {
       return;
-    },
-    [user]
-  );
+    }
 
-  // الاشتراك في Realtime للتحديثات الفورية
+    try {
+      const { error: updateError } = await supabaseClient
+        .from("consultation_messages")
+        .update({ is_read: true })
+        .in("id", messageIds)
+        .eq("appointment_id", appointmentId);
+
+      if (updateError) {
+        console.error("❌ Error marking messages as read:", updateError);
+      }
+    } catch (err: any) {
+      console.error("❌ Error marking messages as read:", err);
+    }
+  }, [appointmentId, user]);
+
+  // جلب معلومات المرسل لرسالة واحدة
+  const fetchSenderInfo = useCallback(async (senderId: string) => {
+    try {
+      const { data: sender } = await supabaseClient
+        .from("profiles")
+        .select("id, name, avatar_url, role")
+        .eq("id", senderId)
+        .single();
+
+      return sender && sender.role !== "admin"
+        ? {
+            id: sender.id,
+            name: sender.name,
+            avatar_url: sender.avatar_url,
+            role: sender.role as "patient" | "doctor" | "companion",
+          }
+        : undefined;
+    } catch (err) {
+      console.warn("Failed to fetch sender info:", senderId);
+      return undefined;
+    }
+  }, []);
+
+  // إضافة رسالة جديدة من Realtime
+  const addNewMessage = useCallback(async (msg: any) => {
+    const sender = await fetchSenderInfo(msg.sender_id);
+    const newMessage: ConsultationMessage = {
+      id: msg.id,
+      appointment_id: msg.appointment_id,
+      sender_id: msg.sender_id,
+      message: msg.message,
+      message_type: (msg.message_type || "text") as "text" | "system" | "video_link" | "voice_link",
+      is_read: msg.is_read || false,
+      created_at: msg.created_at,
+      sender,
+    };
+
+    setMessages((prev) => {
+      // تجنب إضافة الرسالة إذا كانت موجودة بالفعل
+      if (prev.some((m) => m.id === msg.id)) {
+        return prev;
+      }
+      return [...prev, newMessage].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    });
+  }, [fetchSenderInfo]);
+
+  // إعداد Realtime subscription و Polling
   useEffect(() => {
     if (!appointmentId) {
+      setMessages([]);
+      setIsLoading(false);
       return;
     }
 
-    // إلغاء الاشتراك السابق إن وُجد
-    if (channelRef.current) {
-      supabaseClient.removeChannel(channelRef.current);
-      channelRef.current = null;
-      setRealtimeStatus({
-        isConnected: false,
-        isSubscribed: false,
-        error: null,
-      });
-    }
+    // جلب الرسائل فوراً
+    fetchMessages();
 
-    // إنشاء قناة جديدة للاستشارة
+    // إعداد Realtime subscription
+    console.log("🔌 Setting up Realtime subscription for appointment:", appointmentId);
     const channel = supabaseClient
-      .channel(`consultation:${appointmentId}`)
+      .channel(`consultation_messages:${appointmentId}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
-          table: "messages",
+          table: "consultation_messages",
           filter: `appointment_id=eq.${appointmentId}`,
         },
         async (payload) => {
-          console.log("Realtime update received:", payload);
-
-          // إذا كانت رسالة جديدة، نجلبها مع معلومات المرسل
-          if (payload.eventType === "INSERT") {
-            const { data: sender } = await supabaseClient
-              .from("profiles")
-              .select("id, name, avatar_url, role")
-              .eq("id", payload.new.sender_id)
-              .single();
-
-            const newMessage: ConsultationMessage = {
-              id: payload.new.id,
-              appointment_id: payload.new.appointment_id,
-              sender_id: payload.new.sender_id,
-              message: payload.new.body,
-              message_type: "text",
-              is_read: false,
-              created_at: payload.new.created_at,
-              sender: sender && sender.role !== "admin"
+          console.log("📨 New message via Realtime:", payload.new);
+          await addNewMessage(payload.new);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "consultation_messages",
+          filter: `appointment_id=eq.${appointmentId}`,
+        },
+        async (payload) => {
+          console.log("📝 Message updated via Realtime:", payload.new);
+          // تحديث الرسالة في القائمة
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === payload.new.id
                 ? {
-                    id: sender.id,
-                    name: sender.name,
-                    avatar_url: sender.avatar_url,
-                    role: sender.role as "patient" | "doctor" | "companion",
+                    ...msg,
+                    message: payload.new.message,
+                    message_type: payload.new.message_type || msg.message_type,
+                    is_read: payload.new.is_read || msg.is_read,
                   }
-                : undefined,
-            };
-
-            setMessages((prev) => [...prev, newMessage]);
-            // لا يوجد تحديث لحالة القراءة في المخطط الحالي
-          } else if (payload.eventType === "UPDATE") {
-            // تحديث رسالة موجودة (مثل تحديث حالة القراءة)
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === payload.new.id ? { ...msg, message: payload.new.body } : msg
-              )
-            );
-          } else if (payload.eventType === "DELETE") {
-            setMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id));
-          }
+                : msg
+            )
+          );
         }
       )
       .subscribe((status) => {
-        console.log("Realtime subscription status:", status);
+        console.log("🔌 Realtime subscription status:", status);
         if (status === "SUBSCRIBED") {
           setRealtimeStatus({
             isConnected: true,
@@ -227,17 +300,42 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
           setRealtimeStatus({
             isConnected: false,
             isSubscribed: false,
-            error: "خطأ في الاتصال",
+            error: "خطأ في الاتصال بالبث المباشر",
+          });
+        } else if (status === "TIMED_OUT") {
+          setRealtimeStatus({
+            isConnected: false,
+            isSubscribed: false,
+            error: "انتهت مهلة الاتصال",
+          });
+        } else {
+          setRealtimeStatus({
+            isConnected: false,
+            isSubscribed: false,
+            error: null,
           });
         }
       });
 
-    channelRef.current = channel;
+    realtimeChannelRef.current = channel;
+
+    // Polling كنسخة احتياطية (كل 5 ثوان بدلاً من كل ثانية لتقليل الحمل)
+    console.log("🔄 Starting backup polling for appointment:", appointmentId);
+    pollingIntervalRef.current = setInterval(() => {
+      fetchMessages();
+    }, 5000);
 
     return () => {
-      if (channelRef.current) {
-        supabaseClient.removeChannel(channelRef.current);
-        channelRef.current = null;
+      // إلغاء Realtime subscription
+      if (realtimeChannelRef.current) {
+        console.log("🔌 Unsubscribing from Realtime");
+        supabaseClient.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+      // إلغاء Polling
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
       setRealtimeStatus({
         isConnected: false,
@@ -245,25 +343,7 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
         error: null,
       });
     };
-  }, [appointmentId, user, markAsRead]);
-
-  // جلب الرسائل عند تغيير appointmentId
-  useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  // تحديث حالة القراءة للرسائل غير المقروءة عند فتح المحادثة
-  useEffect(() => {
-    if (!user || !messages.length) return;
-
-    const unreadMessageIds = messages
-      .filter((msg) => !msg.is_read && msg.sender_id !== user.id)
-      .map((msg) => msg.id);
-
-    if (unreadMessageIds.length > 0) {
-      markAsRead(unreadMessageIds);
-    }
-  }, [messages, user, markAsRead]);
+  }, [appointmentId, fetchMessages, addNewMessage]);
 
   return {
     messages,
@@ -275,6 +355,3 @@ export function useConsultationMessages(appointmentId: string | null): UseConsul
     refresh: fetchMessages,
   };
 }
-
-
-
