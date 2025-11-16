@@ -47,15 +47,10 @@ export default function DoctorLoginPage() {
     setIsLoading(true)
 
     try {
-      await signIn(email, password)
-      // Save email on successful login
-      saveEmail(email)
-      // Small delay to ensure auth state is fully synced
-      await new Promise(resolve => setTimeout(resolve, 100))
-      // Redirect to dashboard
+      await signIn(email.trim(), password)
+      saveEmail(email.trim())
       router.replace("/dashboard")
     } catch (err: any) {
-      console.error("Login error:", err)
       setError(err?.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.")
       setIsLoading(false)
     }

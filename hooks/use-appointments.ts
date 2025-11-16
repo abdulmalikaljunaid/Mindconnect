@@ -80,38 +80,77 @@ type SelectedAppointment = Pick<
 
 const mapAppointment = async (row: SelectedAppointment): Promise<AppointmentListItem> => {
   // Fetch related names separately to avoid embedding issues
+  // Handle each fetch independently with error handling
   let doctorName: string | null = null
   let patientName: string | null = null
   let companionName: string | null = null
 
-  // Get doctor name
+  // Fetch all profiles in parallel with individual error handling
+  const profileFetches: Promise<void>[] = []
+
   if (row.doctor_id) {
-    const { data: doctorProfile } = await supabaseClient
-      .from("profiles")
-      .select("name")
-      .eq("id", row.doctor_id)
-      .single()
-    doctorName = doctorProfile?.name ?? null
+    profileFetches.push(
+      Promise.resolve(
+        supabaseClient
+          .from("profiles")
+          .select("name")
+          .eq("id", row.doctor_id)
+          .single()
+      )
+        .then(({ data }) => {
+          doctorName = data?.name ?? null
+        })
+        .catch(() => {
+          // Silently fail - name will remain null
+          doctorName = null
+        })
+    )
   }
 
-  // Get patient name
   if (row.patient_id) {
-    const { data: patientProfile } = await supabaseClient
-      .from("profiles")
-      .select("name")
-      .eq("id", row.patient_id)
-      .single()
-    patientName = patientProfile?.name ?? null
+    profileFetches.push(
+      Promise.resolve(
+        supabaseClient
+          .from("profiles")
+          .select("name")
+          .eq("id", row.patient_id)
+          .single()
+      )
+        .then(({ data }) => {
+          patientName = data?.name ?? null
+        })
+        .catch(() => {
+          // Silently fail - name will remain null
+          patientName = null
+        })
+    )
   }
 
-  // Get companion name
   if (row.companion_id) {
-    const { data: companionProfile } = await supabaseClient
-      .from("profiles")
-      .select("name")
-      .eq("id", row.companion_id)
-      .single()
-    companionName = companionProfile?.name ?? null
+    profileFetches.push(
+      Promise.resolve(
+        supabaseClient
+          .from("profiles")
+          .select("name")
+          .eq("id", row.companion_id)
+          .single()
+      )
+        .then(({ data }) => {
+          companionName = data?.name ?? null
+        })
+        .catch(() => {
+          // Silently fail - name will remain null
+          companionName = null
+        })
+    )
+  }
+
+  // Wait for all profile fetches with timeout (5 seconds max)
+  if (profileFetches.length > 0) {
+    await Promise.race([
+      Promise.allSettled(profileFetches),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ])
   }
 
   return {
@@ -152,30 +191,84 @@ const splitAppointments = (appointments: AppointmentListItem[]) => {
   return { upcoming, past }
 }
 
-function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>) => ReturnType<typeof supabaseClient.from>): UseAppointmentsResult {
+function useAppointments(
+  filter: (query: ReturnType<typeof supabaseClient.from>) => ReturnType<typeof supabaseClient.from>,
+  shouldFetch: boolean = true
+): UseAppointmentsResult {
   const [appointments, setAppointments] = useState<AppointmentListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchAppointments = async () => {
+    // Don't fetch if shouldFetch is false
+    if (!shouldFetch) {
+      setIsLoading(false)
+      setAppointments([])
+      return
+    }
     setIsLoading(true)
     setError(null)
 
-    const query = supabaseClient.from("appointments").select(APPOINTMENT_SELECT).order("scheduled_at", { ascending: true })
+    try {
+      const query = supabaseClient.from("appointments").select(APPOINTMENT_SELECT).order("scheduled_at", { ascending: true })
 
-    const { data, error } = await filter(query)
+      const { data, error } = await filter(query)
 
-    if (error) {
-      setError(error.message)
-      setAppointments([])
-    } else {
-      // Map appointments with async function
-      const mappedAppointments = await Promise.all((data ?? []).map(mapAppointment))
+      if (error) {
+        console.error("Error fetching appointments:", error)
+        setError(error.message)
+        setAppointments([])
+        setIsLoading(false)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        setAppointments([])
+        setIsLoading(false)
+        return
+      }
+
+      // Map appointments with async function and timeout protection
+      const mappingPromises = (data ?? []).map(async (appointment: SelectedAppointment) => {
+        try {
+          return await Promise.race([
+            mapAppointment(appointment),
+            new Promise<AppointmentListItem>((_, reject) =>
+              setTimeout(() => reject(new Error("Mapping timeout")), 10000)
+            ),
+          ])
+        } catch (err: any) {
+          console.error("Error mapping appointment:", appointment.id, err)
+          // Return a basic appointment structure even if mapping fails
+          return {
+            id: appointment.id,
+            scheduledAt: appointment.scheduled_at,
+            durationMinutes: appointment.duration_minutes,
+            status: appointment.status,
+            mode: appointment.mode,
+            reason: appointment.reason ?? null,
+            notes: appointment.notes ?? null,
+            consultationFee: appointment.consultation_fee ?? null,
+            rejectionReason: appointment.rejection_reason ?? null,
+            confirmedAt: appointment.confirmed_at ?? null,
+            cancelledAt: appointment.cancelled_at ?? null,
+            doctorName: null,
+            patientName: null,
+            companionName: null,
+          }
+        }
+      })
+
+      const mappedAppointments = await Promise.all(mappingPromises)
       setAppointments(mappedAppointments)
+    } catch (err: any) {
+      console.error("Unexpected error in fetchAppointments:", err)
+      setError(err.message || "حدث خطأ غير متوقع")
+      setAppointments([])
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   // إنشاء موعد جديد
@@ -325,9 +418,15 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
   }
 
   useEffect(() => {
-    fetchAppointments()
+    // Only fetch if shouldFetch is true
+    if (shouldFetch) {
+      fetchAppointments()
+    } else {
+      setIsLoading(false)
+      setAppointments([])
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [shouldFetch]) // Re-fetch if shouldFetch changes
 
   const { upcoming, past } = useMemo(() => splitAppointments(appointments), [appointments])
   
@@ -357,37 +456,49 @@ function useAppointments(filter: (query: ReturnType<typeof supabaseClient.from>)
 }
 
 export function usePatientAppointments(): UseAppointmentsResult {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+  const shouldFetch = !authLoading && !!user
 
-  return useAppointments((query) => {
-    if (!user) {
-      // Return empty results by using an impossible condition
-      return query.limit(0)
-    }
-    return query.eq("patient_id", user.id)
-  })
+  return useAppointments(
+    (query) => {
+      if (!user) {
+        // Return empty results by using an impossible condition
+        return query.eq("id", "00000000-0000-0000-0000-000000000000")
+      }
+      return query.eq("patient_id", user.id)
+    },
+    shouldFetch
+  )
 }
 
 export function useDoctorAppointments(): UseAppointmentsResult {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+  const shouldFetch = !authLoading && !!user
 
-  return useAppointments((query) => {
-    if (!user) {
-      // Return empty results by using an impossible condition
-      return query.limit(0)
-    }
-    return query.eq("doctor_id", user.id)
-  })
+  return useAppointments(
+    (query) => {
+      if (!user) {
+        // Return empty results by using an impossible condition
+        return query.eq("id", "00000000-0000-0000-0000-000000000000")
+      }
+      return query.eq("doctor_id", user.id)
+    },
+    shouldFetch
+  )
 }
 
 export function useCompanionAppointments(): UseAppointmentsResult {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+  const shouldFetch = !authLoading && !!user
 
-  return useAppointments((query) => {
-    if (!user) {
-      // Return empty results by using an impossible condition
-      return query.limit(0)
-    }
-    return query.eq("companion_id", user.id)
-  })
+  return useAppointments(
+    (query) => {
+      if (!user) {
+        // Return empty results by using an impossible condition
+        return query.eq("id", "00000000-0000-0000-0000-000000000000")
+      }
+      return query.eq("companion_id", user.id)
+    },
+    shouldFetch
+  )
 }
