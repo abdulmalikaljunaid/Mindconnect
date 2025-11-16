@@ -31,8 +31,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (initCompleteRef.current) return
       
       try {
-        const currentUser = await authService.getCurrentUser()
-        setUser(currentUser)
+        // First check if there's a session in the URL (OAuth callback)
+        const { data: { session } } = await authService.supabase.auth.getSession()
+        
+        if (session) {
+          // Session exists, get user profile
+          const currentUser = await authService.getCurrentUser()
+          setUser(currentUser)
+        } else {
+          // No session, check if there's a code in URL (OAuth redirect)
+          const urlParams = new URLSearchParams(window.location.search)
+          if (urlParams.get('code')) {
+            // OAuth callback is processing, wait a bit and retry
+            setTimeout(async () => {
+              try {
+                const { data: { session: retrySession } } = await authService.supabase.auth.getSession()
+                if (retrySession) {
+                  const currentUser = await authService.getCurrentUser()
+                  setUser(currentUser)
+                }
+              } catch (error) {
+                console.error("Failed to get user after OAuth:", error)
+              }
+            }, 1000)
+          }
+        }
       } catch (error) {
         console.error("Failed to initialize auth:", error)
         setUser(null)

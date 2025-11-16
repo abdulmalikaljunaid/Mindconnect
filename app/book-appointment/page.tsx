@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -16,13 +16,14 @@ import { User, ArrowLeft, AlertCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { supabaseClient } from "@/lib/supabase-client";
 import { usePatientAppointments } from "@/hooks/use-appointments";
+import { Spinner } from "@/components/ui/spinner";
 import type { AppointmentMode, TimeSlot } from "@/types/appointments";
 import type { DoctorWithProfile } from "@/hooks/use-doctors";
 
-export default function BookAppointmentPage() {
+function BookAppointmentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const doctorId = searchParams.get("doctorId");
 
   const [doctor, setDoctor] = useState<DoctorWithProfile | null>(null);
@@ -198,12 +199,33 @@ export default function BookAppointmentPage() {
   const canSubmit =
     selectedMode && selectedDate && selectedSlot && reason.trim().length > 0 && !isSubmitting;
 
-  if (!user) return null;
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <Spinner className="h-8 w-8" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>يجب تسجيل الدخول أولاً</AlertDescription>
+          </Alert>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
-    <ProtectedRoute allowedRoles={["patient", "companion"]}>
-      <DashboardLayout>
-        <div className="mx-auto max-w-5xl space-y-6">
+    <DashboardLayout>
+      <div className="mx-auto max-w-5xl space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -386,6 +408,23 @@ export default function BookAppointmentPage() {
           )}
         </div>
       </DashboardLayout>
+  );
+}
+
+export default function BookAppointmentPage() {
+  return (
+    <ProtectedRoute allowedRoles={["patient", "companion"]}>
+      <Suspense
+        fallback={
+          <DashboardLayout>
+            <div className="flex min-h-[400px] items-center justify-center">
+              <Spinner className="h-8 w-8" />
+            </div>
+          </DashboardLayout>
+        }
+      >
+        <BookAppointmentContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }
