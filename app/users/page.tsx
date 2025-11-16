@@ -47,7 +47,7 @@ export default function UsersPage() {
           name: profile.name,
           email: profile.email,
           role: profile.role || "patient",
-          status: profile.is_approved ? "active" : "pending",
+          status: profile.is_approved ? "نشط" : "معلق",
           joinedDate: profile.created_at
             ? new Date(profile.created_at).toISOString().split("T")[0]
             : "غير محدد",
@@ -180,7 +180,7 @@ export default function UsersPage() {
                             {userItem.role === "doctor" ? "طبيب" : userItem.role === "patient" ? "مريض" : userItem.role === "companion" ? "مرافق" : userItem.role}
                           </Badge>
                           <Badge variant="secondary">
-                            {userItem.status === "active" ? "نشط" : "معلق"}
+                            {userItem.status}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">

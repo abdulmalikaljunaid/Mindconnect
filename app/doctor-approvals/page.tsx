@@ -279,15 +279,15 @@ export default function DoctorApprovalsPage() {
               </div>
               {doctor.submittedAt && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Submitted: {new Date(doctor.submittedAt).toLocaleDateString()}
+                  تاريخ التقديم: {new Date(doctor.submittedAt).toLocaleDateString('ar-EG')}
                 </p>
               )}
             </div>
           </div>
-          {statusLabel === "Pending" ? (
-            <Button onClick={() => openReview(doctor)}>Review Application</Button>
+          {statusLabel === "قيد الانتظار" ? (
+            <Button onClick={() => openReview(doctor)}>مراجعة الطلب</Button>
           ) : doctor.approvedAt ? (
-            <p className="text-xs text-muted-foreground">Approved {new Date(doctor.approvedAt).toLocaleDateString()}</p>
+            <p className="text-xs text-muted-foreground">تمت الموافقة في {new Date(doctor.approvedAt).toLocaleDateString('ar-EG')}</p>
           ) : null}
         </div>
       </CardContent>
@@ -299,11 +299,11 @@ export default function DoctorApprovalsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Doctor Approvals</h1>
-            <p className="text-muted-foreground">Review and manage doctor registration requests</p>
+            <h1 className="text-3xl font-bold">موافقات الأطباء</h1>
+            <p className="text-muted-foreground">مراجعة وإدارة طلبات تسجيل الأطباء</p>
           </div>
           <Button variant="outline" onClick={refresh} disabled={isLoading}>
-            Refresh
+            تحديث
           </Button>
         </div>
 
@@ -311,72 +311,72 @@ export default function DoctorApprovalsPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium">قيد الانتظار</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{summary.pending}</div>
-              <p className="text-xs text-muted-foreground">Awaiting review</p>
+              <p className="text-xs text-muted-foreground">في انتظار المراجعة</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approved</CardTitle>
+              <CardTitle className="text-sm font-medium">موافق عليه</CardTitle>
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{summary.approved}</div>
-              <p className="text-xs text-muted-foreground">Active doctors</p>
+              <p className="text-xs text-muted-foreground">أطباء نشطون</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+              <CardTitle className="text-sm font-medium">مرفوض</CardTitle>
               <XCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{summary.rejected}</div>
-              <p className="text-xs text-muted-foreground">Not approved</p>
+              <p className="text-xs text-muted-foreground">غير موافق عليه</p>
             </CardContent>
           </Card>
         </div>
 
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="pending">Pending ({summary.pending})</TabsTrigger>
-            <TabsTrigger value="approved">Approved ({summary.approved})</TabsTrigger>
-            <TabsTrigger value="rejected">Rejected ({summary.rejected})</TabsTrigger>
+            <TabsTrigger value="pending">قيد الانتظار ({summary.pending})</TabsTrigger>
+            <TabsTrigger value="approved">موافق عليه ({summary.approved})</TabsTrigger>
+            <TabsTrigger value="rejected">مرفوض ({summary.rejected})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="space-y-4">
             {isLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Loading pending applications...</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">جاري تحميل الطلبات المعلقة...</p>
             ) : pending.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No pending applications</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">لا توجد طلبات معلقة</p>
             ) : (
-              pending.map((doctor) => renderDoctorCard(doctor, "Pending", "secondary"))
+              pending.map((doctor) => renderDoctorCard(doctor, "قيد الانتظار", "secondary"))
             )}
           </TabsContent>
 
           <TabsContent value="approved" className="space-y-4">
             {isLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Loading approved doctors...</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">جاري تحميل الأطباء الموافق عليهم...</p>
             ) : approved.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No approved doctors</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">لا يوجد أطباء موافق عليهم</p>
             ) : (
-              approved.map((doctor) => renderDoctorCard(doctor, "Approved", "default"))
+              approved.map((doctor) => renderDoctorCard(doctor, "موافق عليه", "default"))
             )}
           </TabsContent>
 
           <TabsContent value="rejected" className="space-y-4">
             {isLoading ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Loading rejected applications...</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">جاري تحميل الطلبات المرفوضة...</p>
             ) : rejected.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No rejected applications</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">لا توجد طلبات مرفوضة</p>
             ) : (
-              rejected.map((doctor) => renderDoctorCard(doctor, "Rejected", "destructive"))
+              rejected.map((doctor) => renderDoctorCard(doctor, "مرفوض", "destructive"))
             )}
           </TabsContent>
         </Tabs>

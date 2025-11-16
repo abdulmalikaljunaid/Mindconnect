@@ -100,8 +100,8 @@ export default function PatientsPage() {
             : null
 
           const status = completedAppointments.length > 0 || upcomingAppointments.length > 0
-            ? "Active"
-            : "Inactive"
+            ? "نشط"
+            : "غير نشط"
 
           return {
             id: patientData.id,
@@ -174,7 +174,7 @@ export default function PatientsPage() {
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{patients.filter((p) => p.status === "Active").length}</div>
+              <div className="text-2xl font-bold">{patients.filter((p) => p.status === "نشط").length}</div>
               <p className="text-sm text-muted-foreground">المرضى النشطون</p>
             </CardContent>
           </Card>
@@ -220,12 +220,12 @@ export default function PatientsPage() {
                           <h3 className="font-semibold">{patient.name}</h3>
                           <Badge
                             className={
-                              patient.status === "Active"
+                              patient.status === "نشط"
                                 ? "bg-accent text-accent-foreground"
                                 : "bg-muted text-muted-foreground"
                             }
                           >
-                            {patient.status === "Active" ? "نشط" : "غير نشط"}
+                            {patient.status}
                           </Badge>
                         </div>
                         {patient.email && <p className="text-sm text-muted-foreground">{patient.email}</p>}

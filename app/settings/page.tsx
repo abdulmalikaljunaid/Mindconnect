@@ -13,64 +13,64 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage system settings and configurations</p>
+          <h1 className="text-3xl font-bold">الإعدادات</h1>
+          <p className="text-muted-foreground">إدارة إعدادات النظام والتكوينات</p>
         </div>
 
         <Tabs defaultValue="general" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="general">عام</TabsTrigger>
+            <TabsTrigger value="notifications">الإشعارات</TabsTrigger>
+            <TabsTrigger value="security">الأمان</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Platform Settings</CardTitle>
-                <CardDescription>Configure general platform settings</CardDescription>
+                <CardTitle>إعدادات المنصة</CardTitle>
+                <CardDescription>تكوين الإعدادات العامة للمنصة</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="platform-name">Platform Name</Label>
-                  <Input id="platform-name" defaultValue="MindCare" />
+                  <Label htmlFor="platform-name">اسم المنصة</Label>
+                  <Input id="platform-name" defaultValue="Mindconnect" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="support-email">Support Email</Label>
-                  <Input id="support-email" type="email" defaultValue="support@mindcare.com" />
+                  <Label htmlFor="support-email">البريد الإلكتروني للدعم</Label>
+                  <Input id="support-email" type="email" defaultValue="support@mindconnect.com" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="max-appointments">Max Appointments per Day</Label>
+                  <Label htmlFor="max-appointments">الحد الأقصى للمواعيد في اليوم</Label>
                   <Input id="max-appointments" type="number" defaultValue="10" />
                 </div>
-                <Button>Save Changes</Button>
+                <Button>حفظ التغييرات</Button>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Feature Toggles</CardTitle>
-                <CardDescription>Enable or disable platform features</CardDescription>
+                <CardTitle>ميزات المنصة</CardTitle>
+                <CardDescription>تفعيل أو تعطيل ميزات المنصة</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Doctor Registration</p>
-                    <p className="text-sm text-muted-foreground">Allow new doctors to register</p>
+                    <p className="font-medium">تسجيل الأطباء</p>
+                    <p className="text-sm text-muted-foreground">السماح للأطباء الجدد بالتسجيل</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Patient Registration</p>
-                    <p className="text-sm text-muted-foreground">Allow new patients to register</p>
+                    <p className="font-medium">تسجيل المرضى</p>
+                    <p className="text-sm text-muted-foreground">السماح للمرضى الجدد بالتسجيل</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Video Appointments</p>
-                    <p className="text-sm text-muted-foreground">Enable video call appointments</p>
+                    <p className="font-medium">مواعيد الفيديو</p>
+                    <p className="text-sm text-muted-foreground">تفعيل مواعيد المكالمات المرئية</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
@@ -81,28 +81,28 @@ export default function SettingsPage() {
           <TabsContent value="notifications" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Email Notifications</CardTitle>
-                <CardDescription>Configure email notification settings</CardDescription>
+                <CardTitle>إشعارات البريد الإلكتروني</CardTitle>
+                <CardDescription>تكوين إعدادات إشعارات البريد الإلكتروني</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">New Doctor Registration</p>
-                    <p className="text-sm text-muted-foreground">Notify admins of new doctor applications</p>
+                    <p className="font-medium">تسجيل طبيب جديد</p>
+                    <p className="text-sm text-muted-foreground">إشعار المديرين بطلبات الأطباء الجدد</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Appointment Reminders</p>
-                    <p className="text-sm text-muted-foreground">Send reminders 24 hours before appointments</p>
+                    <p className="font-medium">تذكيرات المواعيد</p>
+                    <p className="text-sm text-muted-foreground">إرسال تذكيرات قبل 24 ساعة من المواعيد</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">System Updates</p>
-                    <p className="text-sm text-muted-foreground">Notify users of platform updates</p>
+                    <p className="font-medium">تحديثات النظام</p>
+                    <p className="text-sm text-muted-foreground">إشعار المستخدمين بتحديثات المنصة</p>
                   </div>
                   <Switch />
                 </div>
@@ -113,26 +113,26 @@ export default function SettingsPage() {
           <TabsContent value="security" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Security Settings</CardTitle>
-                <CardDescription>Manage security and access controls</CardDescription>
+                <CardTitle>إعدادات الأمان</CardTitle>
+                <CardDescription>إدارة الأمان وضوابط الوصول</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Two-Factor Authentication</p>
-                    <p className="text-sm text-muted-foreground">Require 2FA for admin accounts</p>
+                    <p className="font-medium">المصادقة الثنائية</p>
+                    <p className="text-sm text-muted-foreground">تطلب المصادقة الثنائية لحسابات المديرين</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Session Timeout</p>
-                    <p className="text-sm text-muted-foreground">Auto-logout after 30 minutes of inactivity</p>
+                    <p className="font-medium">انتهاء الجلسة</p>
+                    <p className="text-sm text-muted-foreground">تسجيل الخروج التلقائي بعد 30 دقيقة من عدم النشاط</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password-policy">Minimum Password Length</Label>
+                  <Label htmlFor="password-policy">الحد الأدنى لطول كلمة المرور</Label>
                   <Input id="password-policy" type="number" defaultValue="8" />
                 </div>
               </CardContent>
