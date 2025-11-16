@@ -132,11 +132,17 @@ export default function BookAppointmentPage() {
     fetchDoctor();
   }, [doctorId, router]);
   
-  // تنظيف localStorage بعد تحميل الدكتور بنجاح
+  // تنظيف localStorage و sessionStorage بعد تحميل الدكتور بنجاح
   useEffect(() => {
-    if (doctor && localStorage.getItem('selectedDoctor')) {
-      localStorage.removeItem('selectedDoctor');
-      localStorage.removeItem('assessmentResult');
+    if (doctor) {
+      if (localStorage.getItem('selectedDoctor')) {
+        localStorage.removeItem('selectedDoctor');
+        localStorage.removeItem('assessmentResult');
+      }
+      // تنظيف sessionStorage أيضاً
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('booking_redirect');
+      }
     }
   }, [doctor]);
 

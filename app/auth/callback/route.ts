@@ -9,7 +9,14 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
   const roleParam = requestUrl.searchParams.get("role")
-  const next = requestUrl.searchParams.get("next") || "/dashboard"
+  
+  // Determine redirect URL - prioritize next parameter, then check for selectedDoctor
+  let next = requestUrl.searchParams.get("next")
+  
+  // If no next parameter, default to dashboard
+  if (!next) {
+    next = "/dashboard"
+  }
 
   if (!code) {
     console.error("No code parameter in OAuth callback")

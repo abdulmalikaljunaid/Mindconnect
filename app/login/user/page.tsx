@@ -104,7 +104,42 @@ export default function UserLoginPage() {
     setIsGoogleLoading(true)
 
     try {
-      await signInWithGoogle(role)
+      // تحديد redirect URL بالترتيب التالي:
+      // 1. من query params (الأولوية)
+      // 2. من sessionStorage (للاحتياط)
+      // 3. من localStorage (من صفحة التقييم)
+      let redirectUrl: string | undefined
+      
+      // 1. التحقق من query params أولاً
+      const urlParams = new URLSearchParams(window.location.search)
+      const redirectParam = urlParams.get('redirect')
+      if (redirectParam) {
+        redirectUrl = redirectParam
+      }
+      
+      // 2. إذا لم يكن موجوداً، تحقق من sessionStorage
+      if (!redirectUrl && typeof window !== 'undefined') {
+        const sessionRedirect = sessionStorage.getItem('booking_redirect')
+        if (sessionRedirect) {
+          redirectUrl = sessionRedirect
+        }
+      }
+      
+      // 3. إذا لم يكن موجوداً، تحقق من localStorage
+      if (!redirectUrl) {
+        const selectedDoctor = localStorage.getItem('selectedDoctor')
+        if (selectedDoctor) {
+          try {
+            const doctor = JSON.parse(selectedDoctor)
+            // حفظ redirect URL لصفحة الحجز
+            redirectUrl = `/book-appointment?doctorId=${doctor.id}`
+          } catch (parseError) {
+            console.error('Error parsing selectedDoctor:', parseError)
+          }
+        }
+      }
+      
+      await signInWithGoogle(role, redirectUrl)
       // OAuth redirect will handle the rest
     } catch (err: any) {
       setError(err?.message ?? "فشل تسجيل الدخول بواسطة Google. يرجى المحاولة مرة أخرى.")

@@ -104,6 +104,11 @@ export default function AssessmentPage() {
     localStorage.setItem('selectedDoctor', JSON.stringify(doctor))
     localStorage.setItem('assessmentResult', JSON.stringify(assessment))
     
+    // حفظ redirect URL في sessionStorage أيضاً للاحتياط (يستخدم عند تسجيل الدخول عبر Google)
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('booking_redirect', `/book-appointment?doctorId=${doctor.id}`)
+    }
+    
     // التحقق من تسجيل الدخول
     if (isAuthenticated && user) {
       // إذا كان المستخدم مسجل الدخول، انتقل مباشرة إلى صفحة الحجز
