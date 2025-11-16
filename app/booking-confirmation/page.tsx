@@ -17,7 +17,7 @@ interface AppointmentData {
   id: string
   doctorName: string
   scheduledAt: string
-  mode: "video_call" | "in_person"
+  mode: "video" | "in_person" | "audio" | "messaging"
   durationMinutes: number
   consultationFee: number | null
 }
@@ -115,7 +115,21 @@ function BookingConfirmationContent() {
   }
 
   const appointmentDate = new Date(appointment.scheduledAt)
-  const modeLabel = appointment.mode === "video_call" ? "مكالمة فيديو" : "حضوري"
+  const getModeLabel = (mode: string) => {
+    switch (mode) {
+      case "video":
+        return "مكالمة فيديو"
+      case "audio":
+        return "مكالمة صوتية"
+      case "messaging":
+        return "رسائل نصية"
+      case "in_person":
+        return "حضوري"
+      default:
+        return "غير محدد"
+    }
+  }
+  const modeLabel = getModeLabel(appointment.mode)
 
   return (
     <DashboardLayout>
