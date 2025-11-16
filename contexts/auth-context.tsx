@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
 import { authService, type UserProfile, type UserRole } from "@/lib/auth"
+import { useSessionRefresh } from "@/hooks/use-session-refresh"
 
 interface AuthContextType {
   user: UserProfile | null
@@ -20,6 +21,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const initCompleteRef = useRef(false)
+  
+  // Enable automatic session refresh to prevent session expiry
+  useSessionRefresh()
 
   useEffect(() => {
     const init = async () => {
@@ -42,16 +46,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth state changes
     const { data: listener } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event)
+      console.log("Auth state changed:", event, session ? "Session exists" : "No session")
       
       if (event === "SIGNED_OUT" || !session) {
         setUser(null)
         return
       }
 
-      // Only update user on sign in/up events, NOT on token refresh
-      // Token refresh is handled automatically by middleware and doesn't need manual updates
-      if (event === "SIGNED_IN") {
+      // Handle token refresh - ensure session is still valid
+      if (event === "TOKEN_REFRESHED") {
+        try {
+          // Verify the refreshed session is still valid
+          const currentUser = await authService.getCurrentUser()
+          if (currentUser) {
+            // Session is valid, keep user state
+            setUser(currentUser)
+          } else {
+            // Session refresh failed, clear user
+            setUser(null)
+          }
+        } catch (error) {
+          console.error("Failed to verify user after token refresh:", error)
+          // Don't clear user on refresh error - might be temporary network issue
+        }
+        return
+      }
+
+      // Handle sign in/up events
+      if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         try {
           const currentUser = await authService.getCurrentUser()
           setUser(currentUser)
@@ -59,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("Failed to fetch user after auth state change:", error)
         }
       }
-      // Ignore TOKEN_REFRESHED to prevent unnecessary updates and cross-tab conflicts
     })
 
     return () => {

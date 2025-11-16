@@ -19,10 +19,16 @@ if (!supabaseAnonKey) {
 // Create a browser client with proper storage configuration
 // This handles session storage across multiple tabs automatically
 // Enable Realtime for messages
+// Enable auto token refresh and session persistence to prevent session expiry
+// Note: createBrowserClient from @supabase/ssr automatically handles:
+// - autoRefreshToken: true (default)
+// - persistSession: true (default)
+// - detectSessionInUrl: true (default)
 export const supabaseClient = createBrowserClient<Database>(
   supabaseUrl as string, 
   supabaseAnonKey as string,
   {
+    // Global options for the client
     realtime: {
       params: {
         eventsPerSecond: 10,

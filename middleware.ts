@@ -62,9 +62,30 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session if expired - this is crucial for maintaining auth state
   // getSession() will automatically refresh the token if needed
+  // Also explicitly refresh if session is close to expiring
   const {
     data: { session },
+    error: sessionError,
   } = await supabase.auth.getSession()
+  
+  // If session exists but is close to expiring, refresh it proactively
+  if (session && !sessionError) {
+    const expiresAt = session.expires_at
+    if (expiresAt) {
+      const now = Math.floor(Date.now() / 1000)
+      const timeUntilExpiry = expiresAt - now
+      
+      // If token expires within 5 minutes, refresh it
+      if (timeUntilExpiry < 300) {
+        try {
+          await supabase.auth.refreshSession()
+        } catch (refreshError) {
+          // Silently fail - session might still be valid
+          console.warn("Failed to refresh session in middleware:", refreshError)
+        }
+      }
+    }
+  }
   
   // Get user from the refreshed session
   const user = session?.user ?? null
