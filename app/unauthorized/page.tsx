@@ -11,20 +11,20 @@ export default function UnauthorizedPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
             <ShieldAlert className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-2xl">Access Denied</CardTitle>
-          <CardDescription>You don't have permission to access this page</CardDescription>
+          <CardTitle className="text-2xl">تم رفض الوصول</CardTitle>
+          <CardDescription>ليس لديك صلاحية للوصول إلى هذه الصفحة</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            This page is restricted to specific user roles. Please contact support if you believe this is an error.
+            هذه الصفحة مقتصرة على أدوار مستخدمين محددة. يرجى الاتصال بالدعم إذا كنت تعتقد أن هذا خطأ.
           </p>
 
           <div className="flex gap-2">
             <Button asChild variant="outline" className="flex-1 bg-transparent">
-              <Link href="/">Go Home</Link>
+              <Link href="/">العودة للصفحة الرئيسية</Link>
             </Button>
             <Button asChild className="flex-1">
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard">الذهاب إلى لوحة التحكم</Link>
             </Button>
           </div>
         </CardContent>

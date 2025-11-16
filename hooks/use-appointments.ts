@@ -36,7 +36,7 @@ interface UseAppointmentsResult {
   isLoading: boolean
   error: string | null
   refresh: () => Promise<void>
-  createAppointment: (request: BookingRequest) => Promise<boolean>
+  createAppointment: (request: BookingRequest) => Promise<string | null>
   confirmAppointment: (payload: AppointmentActionPayload) => Promise<boolean>
   rejectAppointment: (payload: AppointmentActionPayload) => Promise<boolean>
   cancelAppointment: (appointmentId: string, notes?: string) => Promise<boolean>
@@ -272,9 +272,9 @@ function useAppointments(
   }
 
   // إنشاء موعد جديد
-  const createAppointment = async (request: BookingRequest): Promise<boolean> => {
+  const createAppointment = async (request: BookingRequest): Promise<string | null> => {
     try {
-      const { error } = await supabaseClient.from("appointments").insert({
+      const { data, error } = await supabaseClient.from("appointments").insert({
         patient_id: request.patientId,
         doctor_id: request.doctorId,
         companion_id: request.companionId,
@@ -286,7 +286,7 @@ function useAppointments(
         consultation_fee: request.consultationFee,
         created_by: request.patientId,
         status: "pending",
-      })
+      }).select("id").single()
 
       if (error) throw error
 
@@ -295,7 +295,7 @@ function useAppointments(
         description: "تم إرسال طلب الحجز بنجاح. في انتظار موافقة الدكتور.",
       })
       await fetchAppointments()
-      return true
+      return data?.id || null
     } catch (error: any) {
       console.error("Error creating appointment:", error)
       toast({
@@ -303,7 +303,7 @@ function useAppointments(
         description: error.message || "فشل في إنشاء الموعد",
         variant: "destructive",
       })
-      return false
+      return null
     }
   }
 

@@ -175,7 +175,7 @@ function BookAppointmentContent() {
           ? doctor.messagingConsultationFee
           : doctor.inPersonConsultationFee;
 
-      const success = await createAppointment({
+      const appointmentId = await createAppointment({
         doctorId: doctor.id,
         patientId: user.id,
         scheduledAt: appointmentTime.toISOString(),
@@ -186,8 +186,8 @@ function BookAppointmentContent() {
         consultationFee: fee || 0,
       });
 
-      if (success) {
-        router.push("/booking-confirmation");
+      if (appointmentId) {
+        router.push(`/booking-confirmation?appointmentId=${appointmentId}`);
       }
     } catch (error) {
       console.error("Error booking appointment:", error);
