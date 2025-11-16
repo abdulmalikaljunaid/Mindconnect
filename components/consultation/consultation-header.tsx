@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -44,7 +44,7 @@ const getModeLabel = (mode: string) => {
   }
 };
 
-export function ConsultationHeader({ session, currentUserId }: ConsultationHeaderProps) {
+function ConsultationHeaderComponent({ session, currentUserId }: ConsultationHeaderProps) {
   const appointmentDate = useMemo(() => new Date(session.scheduledAt), [session.scheduledAt]);
   const isDoctor = useMemo(() => currentUserId === session.doctorId, [currentUserId, session.doctorId]);
 
@@ -125,6 +125,11 @@ export function ConsultationHeader({ session, currentUserId }: ConsultationHeade
     </div>
   );
 }
+
+export const ConsultationHeader = memo(ConsultationHeaderComponent);
+
+
+
 
 
 

@@ -18,9 +18,17 @@ if (!supabaseAnonKey) {
 
 // Create a browser client with proper storage configuration
 // This handles session storage across multiple tabs automatically
+// Enable Realtime for messages
 export const supabaseClient = createBrowserClient<Database>(
   supabaseUrl as string, 
-  supabaseAnonKey as string
+  supabaseAnonKey as string,
+  {
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  }
 )
 
 export const createSupabaseServerClient = (

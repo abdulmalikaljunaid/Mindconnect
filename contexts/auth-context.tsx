@@ -111,14 +111,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     console.log("Signing out...")
     try {
+      // مسح بيانات localStorage المتعلقة بالمستخدم
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("selectedDoctor")
+        localStorage.removeItem("assessmentResult")
+      }
+      
       await authService.signOut()
       setUser(null)
+      
+      // التأكد من مسح حالة المصادقة بالكامل
+      if (typeof window !== "undefined") {
+        window.location.href = "/"
+      }
+      
       console.log("Sign out successful")
     } catch (error) {
       console.error("Sign out error:", error)
       // Clear user state even if signOut fails
       setUser(null)
-      throw error
+      
+      // التوجيه للصفحة الرئيسية حتى لو فشل signOut
+      if (typeof window !== "undefined") {
+        window.location.href = "/"
+      }
     }
   }
 

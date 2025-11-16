@@ -50,6 +50,24 @@ export default function UserSignUpPage() {
       
       // Small delay to ensure auth state and profile are fully synced
       await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // التحقق من localStorage للطبيب المختار من التقييم
+      const selectedDoctor = localStorage.getItem('selectedDoctor')
+      
+      if (selectedDoctor) {
+        try {
+          const doctor = JSON.parse(selectedDoctor)
+          // التوجيه إلى صفحة حجز الموعد مع doctorId
+          router.replace(`/book-appointment?doctorId=${doctor.id}`)
+          // حذف البيانات من localStorage بعد الاستخدام
+          localStorage.removeItem('selectedDoctor')
+          localStorage.removeItem('assessmentResult')
+          return
+        } catch (parseError) {
+          console.error('Error parsing selectedDoctor:', parseError)
+        }
+      }
+      
       // Redirect to dashboard
       router.replace("/dashboard")
     } catch (err: any) {
@@ -77,10 +95,12 @@ export default function UserSignUpPage() {
         <CardHeader className="space-y-1">
           <div className="mb-4 flex justify-center">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                <Brain className="h-6 w-6 text-primary-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 shadow-md">
+                <Brain className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-semibold">Mindconnect</span>
+              <span className="text-2xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Mindconnect
+              </span>
             </Link>
           </div>
           <CardTitle className="text-center text-2xl flex items-center gap-2">

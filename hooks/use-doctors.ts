@@ -210,50 +210,48 @@ export function useAdminDoctors(): DoctorsResult {
     setError(null)
 
     try {
-      // Fetch profiles
+      // Fetch profiles with doctor_profiles and specialties in one query
       const { data: profilesData, error: profilesError } = await supabaseClient
         .from("profiles")
-        .select("id, name, email, role, is_approved, created_at")
+        .select(selectQuery)
         .eq("role", "doctor")
         .order("created_at", { ascending: true })
 
-      if (profilesError) throw profilesError
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError)
+        throw profilesError
+      }
 
-      // Fetch doctor_profiles
-      const { data: doctorProfilesData, error: doctorProfilesError } = await supabaseClient
-        .from("doctor_profiles")
-        .select(`
-          profile_id,
-          license_number,
-          experience_years,
-          consultation_fee,
-          languages,
-          offers_video,
-          offers_in_person,
-          clinic_address,
-          education,
-          submitted_at,
-          approval_status,
-          approval_notes,
-          approved_at,
-          license_document_url,
-          certificate_document_url,
-          cv_document_url,
-          id_document_url,
-          metadata
-        `)
-
-      if (doctorProfilesError) throw doctorProfilesError
-
-      // Merge data
-      const doctors = (profilesData ?? []).map((profile: any) => {
-        const doctorProfile = (doctorProfilesData ?? []).find((dp: any) => dp.profile_id === profile.id)
-        return mapDoctor({ ...profile, doctor_profiles: doctorProfile })
-      })
+      // If specialties are missing, fetch them separately
+      const doctorsWithSpecialties = await Promise.all(
+        (profilesData ?? []).map(async (profile: any) => {
+          const mappedDoctor = mapDoctor(profile)
+          
+          // If specialties are empty, try to fetch them separately
+          if (mappedDoctor.specialties.length === 0 && profile.id) {
+            try {
+              const { data: specialtiesData } = await supabaseClient
+                .from("doctor_specialties")
+                .select("specialties(name)")
+                .eq("doctor_id", profile.id)
+              
+              if (specialtiesData && specialtiesData.length > 0) {
+                mappedDoctor.specialties = specialtiesData
+                  .map((item: any) => item?.specialties?.name)
+                  .filter(Boolean)
+              }
+            } catch (err) {
+              console.warn(`Failed to fetch specialties for doctor ${profile.id}:`, err)
+            }
+          }
+          
+          return mappedDoctor
+        })
+      )
       
-      setPending(doctors.filter((doctor) => doctor.status === "pending"))
-      setApproved(doctors.filter((doctor) => doctor.status === "approved"))
-      setRejected(doctors.filter((doctor) => doctor.status === "rejected"))
+      setPending(doctorsWithSpecialties.filter((doctor) => doctor.status === "pending"))
+      setApproved(doctorsWithSpecialties.filter((doctor) => doctor.status === "approved"))
+      setRejected(doctorsWithSpecialties.filter((doctor) => doctor.status === "rejected"))
     } catch (error: any) {
       console.error('❌ Error fetching doctors:', error)
       setError(error.message)

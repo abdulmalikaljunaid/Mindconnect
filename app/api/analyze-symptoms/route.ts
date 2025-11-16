@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { analyzeSymptoms } from "@/lib/ai/gemini"
 import { findBestMatchingDoctors } from "@/lib/doctors"
 
+export const maxDuration = 30; // Maximum execution time for Vercel
+
 export async function POST(request: NextRequest) {
+  const timeout = 35000; // 35 ثانية timeout (أقل من maxDuration)
+  
   try {
     const { symptoms } = await request.json()
     
@@ -13,27 +17,53 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // تحليل الأعراض باستخدام Gemini AI
-    const assessment = await analyzeSymptoms(symptoms.trim())
+    // تحليل الأعراض باستخدام Gemini AI مع timeout
+    const assessmentPromise = analyzeSymptoms(symptoms.trim())
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("انتهت مهلة التحليل. يرجى المحاولة مرة أخرى.")), timeout)
+    )
+    
+    const assessment = await Promise.race([assessmentPromise, timeoutPromise]) as any
     
     // مطابقة الأطباء بناءً على التخصصات المقترحة من قاعدة البيانات
     const doctors = await findBestMatchingDoctors(assessment.recommendedSpecialties)
     
-    return NextResponse.json({
-      success: true,
-      assessment,
-      doctors
-    })
+    // إضافة caching headers للاستجابة
+    return NextResponse.json(
+      {
+        success: true,
+        assessment,
+        doctors
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+          'X-Content-Type-Options': 'nosniff',
+        }
+      }
+    )
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in analyze-symptoms API:", error)
+    
+    // عرض رسالة الخطأ الفعلية إذا كانت متوفرة
+    const errorMessage = error?.message || "حدث خطأ في تحليل الأعراض. يرجى المحاولة مرة أخرى."
     
     return NextResponse.json(
       { 
-        error: "حدث خطأ في تحليل الأعراض. يرجى المحاولة مرة أخرى.",
-        details: process.env.NODE_ENV === 'development' ? error : undefined
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? {
+          message: error?.message,
+          stack: error?.stack,
+          name: error?.name
+        } : undefined
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        }
+      }
     )
   }
 }

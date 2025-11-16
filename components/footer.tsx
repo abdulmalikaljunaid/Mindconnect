@@ -8,10 +8,12 @@ export function Footer() {
         <div className="grid gap-12 md:grid-cols-4">
           <div className="md:col-span-1">
             <Link href="/" className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 shadow-md">
                 <Brain className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-bold">Mindconnect</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Mindconnect
+              </span>
             </Link>
             <p className="text-slate-300 leading-relaxed mb-6">دعم مهني للصحة النفسية للجميع.</p>
             <div className="flex items-center gap-2 text-slate-400">

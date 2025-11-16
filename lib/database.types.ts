@@ -133,8 +133,8 @@ export type Database = {
             foreignKeyName: "appointments_doctor_id_fkey"
             columns: ["doctor_id"]
             isOneToOne: false
-            referencedRelation: "doctor_profiles"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "appointments_patient_id_fkey"
@@ -465,6 +465,63 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          metadata: Json | null
+          read_at: string | null
+          related_id: string | null
+          sender_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          metadata?: Json | null
+          read_at?: string | null
+          related_id?: string | null
+          sender_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          metadata?: Json | null
+          read_at?: string | null
+          related_id?: string | null
+          sender_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_companions: {
         Row: {
           approved_at: string | null
@@ -604,6 +661,7 @@ export type Database = {
         | "no_show"
         | "rescheduled"
       companion_link_status: "pending" | "approved" | "revoked"
+      message_type_enum: "text" | "system" | "video_link" | "voice_link"
       role_type: "patient" | "doctor" | "companion" | "admin"
     }
     CompositeTypes: {
@@ -692,7 +750,7 @@ export type TablesUpdate<
         Update: infer U
       }
       ? U
-      : never
+    : never
     : never
 
 export type Enums<
@@ -742,6 +800,7 @@ export const Constants = {
         "rescheduled",
       ],
       companion_link_status: ["pending", "approved", "revoked"],
+      message_type_enum: ["text", "system", "video_link", "voice_link"],
       role_type: ["patient", "doctor", "companion", "admin"],
     },
   },

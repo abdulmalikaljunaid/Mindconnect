@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { User, Mail, Phone, Award, CheckCircle, XCircle, Clock, FileText, ExternalLink, Download, AlertCircle } from "lucide-react"
+import { User, Mail, Phone, Award, CheckCircle, XCircle, Clock, FileText, Download, AlertCircle, Eye } from "lucide-react"
 import { useAdminDoctors, type DoctorWithProfile } from "@/hooks/use-doctors"
 import { supabaseClient } from "@/lib/supabase-client"
 import { useToast } from "@/hooks/use-toast"
@@ -94,47 +94,141 @@ export default function DoctorApprovalsPage() {
     }
   }
 
-  const handleViewDocument = async (url: string | null | undefined) => {
-    if (!url) return
+  const getDocumentUrl = async (url: string | null | undefined): Promise<string | null> => {
+    if (!url) return null
 
     try {
-      // استخراج اسم الملف من الـ URL
-      const urlObj = new URL(url)
-      const pathParts = urlObj.pathname.split('/object/public/doctor-documents/')
-      if (pathParts.length < 2) {
-        toast({
-          title: "خطأ",
-          description: "رابط الملف غير صحيح",
-          variant: "destructive",
-        })
-        return
+      // Check if URL is already a public URL or needs signed URL
+      let documentUrl = url
+
+      // If URL contains '/object/public/', it's a public URL - use directly
+      if (url.includes('/object/public/')) {
+        return url
       }
 
-      const filePath = pathParts[1]
+      // Try to extract file path from URL
+      let filePath = url
 
-      // الحصول على signed URL
+      // If it's a full URL, extract the path
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+          const urlObj = new URL(url)
+          // Try different path patterns
+          const publicMatch = urlObj.pathname.match(/\/object\/public\/doctor-documents\/(.+)/)
+          if (publicMatch) {
+            return url // Already a public URL
+          } else {
+            // Try to extract from pathname
+            const pathMatch = urlObj.pathname.match(/doctor-documents\/(.+)/)
+            if (pathMatch) {
+              filePath = pathMatch[1]
+            }
+          }
+        } catch (e) {
+          // If URL parsing fails, assume url is already the file path
+          filePath = url
+        }
+      }
+
+      // Create a signed URL
       const { data, error } = await supabaseClient.storage
         .from('doctor-documents')
-        .createSignedUrl(filePath, 60) // صالح لمدة 60 ثانية
+        .createSignedUrl(filePath, 3600) // صالح لمدة ساعة
 
       if (error) {
         console.error('Error creating signed URL:', error)
-        toast({
-          title: "خطأ في فتح الملف",
-          description: error.message,
-          variant: "destructive",
-        })
-        return
+        throw error
       }
 
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank')
+      return data?.signedUrl || null
+    } catch (error: any) {
+      console.error('Error getting document URL:', error)
+      throw error
+    }
+  }
+
+  const handleViewDocument = async (url: string | null | undefined, documentName: string) => {
+    if (!url) {
+      toast({
+        title: "خطأ",
+        description: "لا يوجد رابط للمستند",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const documentUrl = await getDocumentUrl(url)
+      
+      if (!documentUrl) {
+        throw new Error("فشل في الحصول على رابط الملف")
       }
-    } catch (error) {
+
+      // Use a unique window name for each document type to allow multiple windows
+      const windowName = `doc_${documentName}_${Date.now()}`
+      const newWindow = window.open(documentUrl, windowName, 'noopener,noreferrer')
+      
+      if (!newWindow) {
+        toast({
+          title: "تم حظر النافذة المنبثقة",
+          description: "يرجى السماح للنوافذ المنبثقة في إعدادات المتصفح",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
       console.error('Error viewing document:', error)
       toast({
         title: "خطأ",
-        description: "فشل في فتح الملف",
+        description: error.message || "فشل في فتح الملف. يرجى التحقق من صحة الرابط.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDownloadDocument = async (url: string | null | undefined, documentName: string, fileName: string) => {
+    if (!url) {
+      toast({
+        title: "خطأ",
+        description: "لا يوجد رابط للمستند",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const documentUrl = await getDocumentUrl(url)
+      
+      if (!documentUrl) {
+        throw new Error("فشل في الحصول على رابط الملف")
+      }
+
+      // Fetch the file
+      const response = await fetch(documentUrl)
+      if (!response.ok) {
+        throw new Error("فشل في تحميل الملف")
+      }
+
+      const blob = await response.blob()
+      
+      // Create a download link
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = fileName || `${documentName}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(downloadUrl)
+
+      toast({
+        title: "تم التنزيل",
+        description: `تم تنزيل ${documentName} بنجاح`,
+      })
+    } catch (error: any) {
+      console.error('Error downloading document:', error)
+      toast({
+        title: "خطأ",
+        description: error.message || "فشل في تنزيل الملف",
         variant: "destructive",
       })
     }
@@ -153,10 +247,22 @@ export default function DoctorApprovalsPage() {
                 <h3 className="font-semibold">{doctor.name}</h3>
                 <Badge variant={badgeVariant}>{statusLabel}</Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {doctor.specialties.join(" • ") || "Specialty not provided"}
-                {doctor.experienceYears ? ` • ${doctor.experienceYears} years experience` : ""}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {doctor.specialties && doctor.specialties.length > 0 ? (
+                  doctor.specialties.map((specialty, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {specialty}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-sm text-muted-foreground">لم يتم تحديد التخصص</span>
+                )}
+                {doctor.experienceYears && (
+                  <span className="text-sm text-muted-foreground">
+                    • {doctor.experienceYears} سنة خبرة
+                  </span>
+                )}
+              </div>
               <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
                 {doctor.email && (
                   <div className="flex items-center gap-1">
@@ -292,9 +398,19 @@ export default function DoctorApprovalsPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold">{selectedDoctor.name}</h3>
-                  <p className="text-muted-foreground">{selectedDoctor.specialties.join(" • ") || "لم يتم تحديد التخصص"}</p>
+                  {selectedDoctor.specialties && selectedDoctor.specialties.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedDoctor.specialties.map((specialty, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {specialty}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm mt-2">لم يتم تحديد التخصص</p>
+                  )}
                   {selectedDoctor.submittedAt && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-2">
                       تاريخ التقديم: {new Date(selectedDoctor.submittedAt).toLocaleDateString('ar-EG')}
                     </p>
                   )}
@@ -355,13 +471,24 @@ export default function DoctorApprovalsPage() {
                         <FileText className="h-4 w-4" />
                         <span className="text-sm">صورة الرخصة</span>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleViewDocument(selectedDoctor.licenseDocumentUrl)}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleViewDocument(selectedDoctor.licenseDocumentUrl, 'license')}
+                          title="عرض"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDownloadDocument(selectedDoctor.licenseDocumentUrl, 'صورة الرخصة', `license_${selectedDoctor.name}.pdf`)}
+                          title="تنزيل"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -371,13 +498,24 @@ export default function DoctorApprovalsPage() {
                         <FileText className="h-4 w-4" />
                         <span className="text-sm">الشهادة العلمية</span>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleViewDocument(selectedDoctor.certificateDocumentUrl)}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleViewDocument(selectedDoctor.certificateDocumentUrl, 'certificate')}
+                          title="عرض"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDownloadDocument(selectedDoctor.certificateDocumentUrl, 'الشهادة العلمية', `certificate_${selectedDoctor.name}.pdf`)}
+                          title="تنزيل"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -387,13 +525,24 @@ export default function DoctorApprovalsPage() {
                         <FileText className="h-4 w-4" />
                         <span className="text-sm">السيرة الذاتية</span>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleViewDocument(selectedDoctor.cvDocumentUrl)}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleViewDocument(selectedDoctor.cvDocumentUrl, 'cv')}
+                          title="عرض"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDownloadDocument(selectedDoctor.cvDocumentUrl, 'السيرة الذاتية', `cv_${selectedDoctor.name}.pdf`)}
+                          title="تنزيل"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -403,13 +552,24 @@ export default function DoctorApprovalsPage() {
                         <FileText className="h-4 w-4" />
                         <span className="text-sm">صورة الهوية</span>
                       </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleViewDocument(selectedDoctor.idDocumentUrl)}
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleViewDocument(selectedDoctor.idDocumentUrl, 'id')}
+                          title="عرض"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDownloadDocument(selectedDoctor.idDocumentUrl, 'صورة الهوية', `id_${selectedDoctor.name}.pdf`)}
+                          title="تنزيل"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>

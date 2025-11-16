@@ -1,75 +1,10 @@
 import { getSupabaseAdminClient } from "@/lib/supabase-admin"
 import type { Tables } from "@/lib/database.types"
 import type { Doctor, DoctorMatch, Specialty } from "@/types/assessment"
+import { cache, CacheKeys } from "@/lib/cache"
 
-const FALLBACK_DOCTORS: Doctor[] = [
-  {
-    id: "doc-1",
-    name: "Dr. Sarah Williams",
-    nameAr: "د. سارة ويليامز",
-    specialties: ["depression-anxiety", "cognitive-behavioral"],
-    experience: 8,
-    rating: 4.9,
-    avatar: "/placeholder-user.jpg",
-    bio: "أخصائية نفسية إكلينيكية متخصصة في اضطرابات نقص الانتباه والقلق",
-    languages: ["العربية", "الإنجليزية"],
-  },
-  {
-    id: "doc-2",
-    name: "Dr. Michael Chen",
-    nameAr: "د. مايكل تشين",
-    specialties: ["depression-anxiety", "psychotic-disorders", "general-psychiatry"],
-    experience: 12,
-    rating: 4.8,
-    avatar: "/placeholder-user.jpg",
-    bio: "طبيب نفسي متخصص في علاج الاكتئاب والاضطراب ثنائي القطب",
-    languages: ["العربية", "الإنجليزية", "الصينية"],
-  },
-  {
-    id: "doc-3",
-    name: "Dr. Fatima Al-Rashid",
-    nameAr: "د. فاطمة الراشد",
-    specialties: ["depression-anxiety", "trauma-ptsd"],
-    experience: 6,
-    rating: 4.7,
-    avatar: "/placeholder-user.jpg",
-    bio: "أخصائية نفسية متخصصة في اضطرابات القلق والوسواس القهري",
-    languages: ["العربية", "الإنجليزية", "الفرنسية"],
-  },
-  {
-    id: "doc-4",
-    name: "Dr. Ahmed Hassan",
-    nameAr: "د. أحمد حسن",
-    specialties: ["sleep-disorders", "addiction-treatment", "general-psychiatry"],
-    experience: 10,
-    rating: 4.6,
-    avatar: "/placeholder-user.jpg",
-    bio: "طبيب نفسي متخصص في اضطرابات النوم وعلاج الإدمان",
-    languages: ["العربية", "الإنجليزية"],
-  },
-  {
-    id: "doc-5",
-    name: "Dr. Lisa Anderson",
-    nameAr: "د. ليزا أندرسون",
-    specialties: ["eating-disorders", "depression-anxiety"],
-    experience: 7,
-    rating: 4.9,
-    avatar: "/placeholder-user.jpg",
-    bio: "أخصائية نفسية متخصصة في اضطرابات الأكل والصحة النفسية",
-    languages: ["العربية", "الإنجليزية", "الألمانية"],
-  },
-  {
-    id: "doc-6",
-    name: "Dr. Omar Khalil",
-    nameAr: "د. عمر خليل",
-    specialties: ["child-adolescent", "general-psychiatry"],
-    experience: 15,
-    rating: 4.8,
-    avatar: "/placeholder-user.jpg",
-    bio: "طبيب نفسي ذو خبرة واسعة في علاج اضطرابات نقص الانتباه",
-    languages: ["العربية", "الإنجليزية", "الإسبانية"],
-  },
-]
+// تم إزالة البيانات الوهمية - يجب جلب البيانات الحقيقية من قاعدة البيانات فقط
+// FALLBACK_DOCTORS removed - must fetch real data from database only
 
 interface DoctorProfileRow extends Tables<"doctor_profiles"> {
   profile: {
@@ -209,6 +144,13 @@ function rankDoctors(doctors: Doctor[], requiredSpecialties: Specialty[]): Docto
 
 export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]): Promise<DoctorMatch[]> {
   try {
+    // Check cache first
+    const cacheKey = CacheKeys.doctors(requiredSpecialties);
+    const cached = cache.get<DoctorMatch[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const supabaseAdmin = getSupabaseAdminClient()
 
     const { data, error } = await supabaseAdmin
@@ -241,15 +183,29 @@ export async function findBestMatchingDoctors(requiredSpecialties: Specialty[]):
       throw new Error("No approved doctors found")
     }
 
-    return rankDoctors(doctors, requiredSpecialties)
+    const result = rankDoctors(doctors, requiredSpecialties);
+    
+    // Cache the result for 5 minutes
+    cache.set(cacheKey, result, 5 * 60 * 1000);
+    
+    return result;
   } catch (err) {
-    console.warn("Falling back to default doctor list", err)
-    return rankDoctors(FALLBACK_DOCTORS, requiredSpecialties)
+    console.error("Failed to fetch doctors from database:", err)
+    // لا نستخدم بيانات وهمية - نعيد قائمة فارغة بدلاً من ذلك
+    // Don't use fake data - return empty list instead
+    return []
   }
 }
 
 export async function getDoctorById(id: string): Promise<Doctor | null> {
   try {
+    // Check cache first
+    const cacheKey = CacheKeys.doctorById(id);
+    const cached = cache.get<Doctor>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const supabaseAdmin = getSupabaseAdminClient()
     const { data, error } = await supabaseAdmin
       .from("doctor_profiles")
@@ -272,14 +228,19 @@ export async function getDoctorById(id: string): Promise<Doctor | null> {
       throw error ?? new Error("Doctor not found")
     }
 
-    return buildDoctor(data as SelectedDoctorProfileRow)
-  } catch (error) {
-    const fallback = FALLBACK_DOCTORS.find((doctor) => doctor.id === id)
-    if (!fallback) {
-      console.error("Failed to fetch doctor by id", error)
-      return null
+    const result = buildDoctor(data as SelectedDoctorProfileRow);
+    
+    // Cache the result for 10 minutes
+    if (result) {
+      cache.set(cacheKey, result, 10 * 60 * 1000);
     }
-    return fallback
+    
+    return result;
+  } catch (error) {
+    console.error("Failed to fetch doctor by id", error)
+    // لا نستخدم بيانات وهمية - نعيد null بدلاً من ذلك
+    // Don't use fake data - return null instead
+    return null
   }
 }
 

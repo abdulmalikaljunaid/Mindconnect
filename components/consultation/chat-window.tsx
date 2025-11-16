@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Loader2, Wifi, WifiOff } from "lucide-react";
 import { MessageItem } from "./message-item";
 import { useConsultationMessages } from "@/hooks/use-consultation-messages";
@@ -18,14 +17,25 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { messages, isLoading, error, sendMessage, realtimeStatus } =
     useConsultationMessages(appointmentId);
 
-  // Auto-scroll إلى الرسالة الأخيرة
+  // Auto-scroll إلى الرسالة الأخيرة عند إضافة رسائل جديدة
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (messages.length > 0 && messagesEndRef.current) {
+      // استخدام setTimeout لضمان أن DOM تم تحديثه
+      const timeoutId = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ 
+          behavior: "smooth",
+          block: "end"
+        });
+      }, 200);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [messages.length, messages]);
 
   const handleSend = async () => {
     if (!messageText.trim() || isSending) return;
@@ -77,7 +87,7 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
       )}
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4">
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollAreaRef}>
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -90,7 +100,7 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4 pb-4">
             {messages.map((message) => (
               <MessageItem
                 key={message.id}
@@ -98,10 +108,10 @@ export function ChatWindow({ appointmentId }: ChatWindowProps) {
                 isOwnMessage={message.sender_id === user?.id}
               />
             ))}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-1" />
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Input Area */}
       <div className="border-t p-4 bg-background">

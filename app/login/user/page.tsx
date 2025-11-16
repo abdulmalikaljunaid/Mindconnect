@@ -57,8 +57,32 @@ export default function UserLoginPage() {
       saveEmail(email)
       // Small delay to ensure auth state is fully synced
       await new Promise(resolve => setTimeout(resolve, 100))
-      // Redirect to dashboard
-      router.replace("/dashboard")
+      
+      // التحقق من localStorage للطبيب المختار من التقييم
+      const selectedDoctor = localStorage.getItem('selectedDoctor')
+      const redirectUrl = new URLSearchParams(window.location.search).get('redirect')
+      
+      if (selectedDoctor) {
+        try {
+          const doctor = JSON.parse(selectedDoctor)
+          // التوجيه إلى صفحة حجز الموعد مع doctorId
+          router.replace(`/book-appointment?doctorId=${doctor.id}`)
+          // حذف البيانات من localStorage بعد الاستخدام
+          localStorage.removeItem('selectedDoctor')
+          localStorage.removeItem('assessmentResult')
+          return
+        } catch (parseError) {
+          console.error('Error parsing selectedDoctor:', parseError)
+        }
+      }
+      
+      // إذا كان هناك redirect URL، استخدمه
+      if (redirectUrl) {
+        router.replace(redirectUrl)
+      } else {
+        // Redirect to dashboard
+        router.replace("/dashboard")
+      }
     } catch (err) {
       setError("البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.")
       setIsLoading(false)
@@ -94,10 +118,12 @@ export default function UserLoginPage() {
         <CardHeader className="space-y-1">
           <div className="mb-4 flex justify-center">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-                <Brain className="h-6 w-6 text-primary-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 shadow-md">
+                <Brain className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-semibold">Mindconnect</span>
+              <span className="text-2xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Mindconnect
+              </span>
             </Link>
           </div>
           <CardTitle className="text-center text-2xl flex items-center gap-2">

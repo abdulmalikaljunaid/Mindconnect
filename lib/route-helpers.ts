@@ -35,7 +35,6 @@ export function isProtectedRoute(pathname: string): boolean {
     "/users",
     "/settings",
     "/symptoms-matcher",
-    "/assessment",
   ]
   
   return protectedPaths.some(path => pathname.startsWith(path))
@@ -51,6 +50,9 @@ export function isPublicRoute(pathname: string): boolean {
     "/signup",
     "/about",
     "/contact",
+    "/assessment",
+    "/assistant",
+    "/find-doctors",
   ]
   
   return publicPaths.some(path => pathname === path || pathname.startsWith(path))

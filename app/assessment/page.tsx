@@ -31,13 +31,20 @@ export default function AssessmentPage() {
     setError("")
 
     try {
+      // إضافة timeout للطلب (70 ثانية - أكثر من timeout الـ API)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 70000)
+      
       const response = await fetch('/api/analyze-symptoms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ symptoms: symptomsText }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       const data = await response.json()
 
@@ -48,9 +55,19 @@ export default function AssessmentPage() {
       setAssessment(data.assessment)
       setDoctors(data.doctors)
       setCurrentStep('results')
-    } catch (err) {
+    } catch (err: any) {
       console.error('Assessment error:', err)
-      setError(err instanceof Error ? err.message : 'حدث خطأ غير متوقع')
+      
+      // معالجة مختلفة لأنواع الأخطاء
+      let errorMessage = 'حدث خطأ غير متوقع'
+      
+      if (err?.name === 'AbortError') {
+        errorMessage = 'انتهت مهلة التحليل. يرجى المحاولة مرة أخرى.'
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
+      setError(errorMessage)
       setCurrentStep('input')
     } finally {
       setIsLoading(false)

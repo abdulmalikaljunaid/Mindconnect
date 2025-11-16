@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { ProtectedRoute } from "@/components/protected-route";
 import { ConsultationHeader } from "@/components/consultation/consultation-header";
-import { ChatWindow } from "@/components/consultation/chat-window";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ArrowRight, Video, Phone, MapPin, AlertCircle } from "lucide-react";
@@ -14,6 +13,9 @@ import { supabaseClient } from "@/lib/supabase-client";
 import type { ConsultationSession } from "@/types/consultation";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
+
+// Lazy load ChatWindow for better performance
+const ChatWindow = lazy(() => import("@/components/consultation/chat-window").then(mod => ({ default: mod.ChatWindow })));
 
 export default function ConsultationPage() {
   const params = useParams();
@@ -129,38 +131,8 @@ export default function ConsultationPage() {
     fetchSession();
   }, [appointmentId, user]);
 
-  // إرسال رسالة ترحيب تلقائية عند أول فتح للمحادثة
-  useEffect(() => {
-    if (!session || !user) return;
-
-    const sendWelcomeMessage = async () => {
-      // جلب عدد الرسائل الحالية للتأكد من أنها الأولى
-      const { count } = await supabaseClient
-        .from("messages" as const)
-        .select("*", { count: "exact", head: true })
-        .eq("appointment_id", appointmentId);
-
-      if (count === 0) {
-        // إرسال رسالة ترحيب
-        const welcomeText =
-          session.mode === "video"
-            ? "مرحباً! موعد الاستشارة بالفيديو جاهز. يمكنك بدء الاستشارة قبل 10 دقائق من الموعد."
-            : session.mode === "audio"
-            ? "مرحباً! موعد الاستشارة الصوتية جاهز. يمكنك بدء الاستشارة قبل 10 دقائق من الموعد."
-            : session.mode === "messaging"
-            ? "مرحباً! يمكنك الآن التواصل مع الدكتور عبر الرسائل."
-            : "مرحباً! يمكنك التنسيق مع الدكتور حول الزيارة الحضورية.";
-
-        await supabaseClient.from("messages" as const).insert({
-          appointment_id: appointmentId,
-          sender_id: user.id,
-          body: welcomeText,
-        });
-      }
-    };
-
-    sendWelcomeMessage();
-  }, [session, user, appointmentId]);
+  // إرسال رسالة ترحيب تلقائية عند أول فتح للمحادثة (تم إزالتها لتجنب التكرار)
+  // الرسائل الترحيبية يجب أن تُرسل من قبل النظام، ليس من هنا
 
   if (!user) return null;
 
@@ -253,7 +225,13 @@ export default function ConsultationPage() {
 
           {/* Chat Window */}
           <div className="flex-1 min-h-0">
-            <ChatWindow appointmentId={appointmentId} />
+            <Suspense fallback={
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }>
+              <ChatWindow appointmentId={appointmentId} />
+            </Suspense>
           </div>
         </div>
       </DashboardLayout>

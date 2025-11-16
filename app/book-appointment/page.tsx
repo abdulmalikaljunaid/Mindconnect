@@ -38,7 +38,26 @@ export default function BookAppointmentPage() {
 
   // جلب بيانات الدكتور
   useEffect(() => {
-    if (!doctorId) {
+    // تحديد doctorId من URL أو localStorage (من صفحة التقييم)
+    let actualDoctorId = doctorId;
+    
+    if (!actualDoctorId) {
+      try {
+        const selectedDoctor = localStorage.getItem('selectedDoctor');
+        if (selectedDoctor) {
+          const doctor = JSON.parse(selectedDoctor);
+          actualDoctorId = doctor.id;
+          // تحديث URL بدون إعادة تحميل الصفحة
+          if (actualDoctorId) {
+            router.replace(`/book-appointment?doctorId=${actualDoctorId}`, { scroll: false });
+          }
+        }
+      } catch (error) {
+        console.error('Error reading selectedDoctor from localStorage:', error);
+      }
+    }
+    
+    if (!actualDoctorId) {
       router.push("/find-doctors");
       return;
     }
@@ -50,7 +69,7 @@ export default function BookAppointmentPage() {
         const { data: profileData, error: profileError } = await supabaseClient
           .from("profiles")
           .select("id, name, email, bio, is_approved, role")
-          .eq("id", doctorId)
+          .eq("id", actualDoctorId!)
           .single();
 
         if (profileError) throw profileError;
@@ -63,12 +82,12 @@ export default function BookAppointmentPage() {
           supabaseClient
             .from("doctor_profiles")
             .select("*")
-            .eq("profile_id", doctorId)
+            .eq("profile_id", actualDoctorId!)
             .single(),
           supabaseClient
             .from("doctor_specialties")
             .select("specialties(name)")
-            .eq("doctor_id", doctorId)
+            .eq("doctor_id", actualDoctorId!)
         ]);
 
         const { data: doctorProfileData, error: doctorProfileError } = doctorProfileResult;
@@ -112,6 +131,14 @@ export default function BookAppointmentPage() {
 
     fetchDoctor();
   }, [doctorId, router]);
+  
+  // تنظيف localStorage بعد تحميل الدكتور بنجاح
+  useEffect(() => {
+    if (doctor && localStorage.getItem('selectedDoctor')) {
+      localStorage.removeItem('selectedDoctor');
+      localStorage.removeItem('assessmentResult');
+    }
+  }, [doctor]);
 
   const handleTimeSlotSelect = (date: Date, slot: TimeSlot) => {
     setSelectedDate(date);
