@@ -86,7 +86,7 @@ function detectDirectFunctionCall(message: string): { name: string; args: any } 
     const reason = reasonMatch ? reasonMatch[1].trim() : "مراجعة نفسية";
     
     if (doctorName && dateStr) {
-      const scheduledAt = parseNaturalDate(dateStr, timeStr) || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const scheduledAt = parseNaturalDate(dateStr, timeStr ?? undefined) || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       
       return {
         name: "bookAppointment",
