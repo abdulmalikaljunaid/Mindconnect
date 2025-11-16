@@ -75,7 +75,7 @@ export default function PatientDetailPage() {
         // جلب المواعيد للمريض مع هذا الطبيب
         const { data: appointmentsData, error: appointmentsError } = await supabaseClient
           .from("appointments")
-          .select("id, scheduled_at, status, mode, duration_minutes")
+          .select("id, scheduled_at, status, mode, duration_minutes, notes")
           .eq("patient_id", patientId)
           .eq("doctor_id", user.id)
           .order("scheduled_at", { ascending: false })
