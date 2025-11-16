@@ -335,7 +335,7 @@ export default function DoctorSignUpPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="doctor@example.com"
+                placeholder="doctor@mindconnect.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

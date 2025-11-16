@@ -231,7 +231,7 @@ export default function UserLoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="example@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => {

@@ -26,23 +26,23 @@ interface MatchedDoctor {
 
 // Mapping symptoms to specialties
 const symptomToSpecialtyMap: Record<string, Specialty[]> = {
-  "Persistent sadness": ["depression-anxiety"],
-  "Anxiety": ["depression-anxiety", "cognitive-behavioral"],
-  "Mood swings": ["depression-anxiety", "psychotic-disorders"],
-  "Irritability": ["depression-anxiety"],
-  "Loss of interest": ["depression-anxiety"],
-  "Insomnia": ["sleep-disorders"],
-  "Excessive sleeping": ["sleep-disorders"],
-  "Fatigue": ["general-psychiatry", "depression-anxiety"],
-  "Low energy": ["depression-anxiety"],
-  "Racing thoughts": ["depression-anxiety", "cognitive-behavioral"],
-  "Difficulty concentrating": ["child-adolescent", "depression-anxiety"],
-  "Intrusive thoughts": ["depression-anxiety", "cognitive-behavioral"],
-  "Compulsive behaviors": ["depression-anxiety", "cognitive-behavioral"],
-  "Headaches": ["general-psychiatry"],
-  "Appetite changes": ["eating-disorders", "depression-anxiety"],
-  "Physical tension": ["depression-anxiety"],
-  "Panic attacks": ["depression-anxiety", "trauma-ptsd"],
+  "حزن مستمر": ["depression-anxiety"],
+  "قلق": ["depression-anxiety", "cognitive-behavioral"],
+  "تقلبات مزاجية": ["depression-anxiety", "psychotic-disorders"],
+  "تهيج": ["depression-anxiety"],
+  "فقدان الاهتمام": ["depression-anxiety"],
+  "أرق": ["sleep-disorders"],
+  "نوم مفرط": ["sleep-disorders"],
+  "إرهاق": ["general-psychiatry", "depression-anxiety"],
+  "انخفاض الطاقة": ["depression-anxiety"],
+  "أفكار متسارعة": ["depression-anxiety", "cognitive-behavioral"],
+  "صعوبة في التركيز": ["child-adolescent", "depression-anxiety"],
+  "أفكار تدخلية": ["depression-anxiety", "cognitive-behavioral"],
+  "سلوكيات قهرية": ["depression-anxiety", "cognitive-behavioral"],
+  "صداع": ["general-psychiatry"],
+  "تغيرات في الشهية": ["eating-disorders", "depression-anxiety"],
+  "توتر جسدي": ["depression-anxiety"],
+  "نوبات هلع": ["depression-anxiety", "trauma-ptsd"],
 }
 
 export default function SymptomsMatcherPage() {
@@ -53,20 +53,20 @@ export default function SymptomsMatcherPage() {
 
   const symptomCategories = [
     {
-      category: "Mood & Emotions",
-      symptoms: ["Persistent sadness", "Anxiety", "Mood swings", "Irritability", "Loss of interest"],
+      category: "المزاج والعواطف",
+      symptoms: ["حزن مستمر", "قلق", "تقلبات مزاجية", "تهيج", "فقدان الاهتمام"],
     },
     {
-      category: "Sleep & Energy",
-      symptoms: ["Insomnia", "Excessive sleeping", "Fatigue", "Low energy"],
+      category: "النوم والطاقة",
+      symptoms: ["أرق", "نوم مفرط", "إرهاق", "انخفاض الطاقة"],
     },
     {
-      category: "Thoughts & Behavior",
-      symptoms: ["Racing thoughts", "Difficulty concentrating", "Intrusive thoughts", "Compulsive behaviors"],
+      category: "الأفكار والسلوك",
+      symptoms: ["أفكار متسارعة", "صعوبة في التركيز", "أفكار تدخلية", "سلوكيات قهرية"],
     },
     {
-      category: "Physical Symptoms",
-      symptoms: ["Headaches", "Appetite changes", "Physical tension", "Panic attacks"],
+      category: "الأعراض الجسدية",
+      symptoms: ["صداع", "تغيرات في الشهية", "توتر جسدي", "نوبات هلع"],
     },
   ]
 
@@ -116,9 +116,9 @@ export default function SymptomsMatcherPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Find Your Perfect Match</h1>
+          <h1 className="text-3xl font-bold">ابحث عن الطبيب المناسب لك</h1>
           <p className="text-muted-foreground">
-            Select your symptoms to find doctors specialized in treating your concerns
+            اختر أعراضك للعثور على أطباء متخصصين في علاج مشاكلك
           </p>
         </div>
 
@@ -155,7 +155,7 @@ export default function SymptomsMatcherPage() {
             {selectedSymptoms.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Selected Symptoms ({selectedSymptoms.length})</CardTitle>
+                  <CardTitle className="text-lg">الأعراض المختارة ({selectedSymptoms.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
@@ -182,7 +182,7 @@ export default function SymptomsMatcherPage() {
               disabled={selectedSymptoms.length === 0}
             >
               <Search className="mr-2 h-5 w-5" />
-              Find Matching Doctors
+              البحث عن أطباء مطابقين
             </Button>
           </>
         ) : (

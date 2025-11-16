@@ -147,7 +147,7 @@ export default function AdminSetupPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="admin@mindconnect.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
