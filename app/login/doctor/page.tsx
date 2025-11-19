@@ -171,13 +171,13 @@ export default function DoctorLoginPage() {
 
           <div className="mt-6 space-y-3">
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">ليس لديك حساب؟ </span>
+              <span className="text-foreground/70">ليس لديك حساب؟ </span>
               <Link href="/signup/doctor" className="font-medium text-primary hover:underline">
                 سجل الآن
               </Link>
             </div>
             <div className="text-center text-sm">
-              <Link href="/login" className="text-muted-foreground hover:underline">
+              <Link href="/login" className="text-foreground/70 hover:underline">
                 ← العودة لاختيار نوع الحساب
               </Link>
             </div>

@@ -30,7 +30,7 @@ export default function SignUpPage() {
                 <User className="h-8 w-8" />
                 <div className="text-center">
                   <div className="font-semibold text-lg">مريض / مرافق</div>
-                  <div className="text-sm text-muted-foreground">إنشاء حساب للمرضى والمرافقين</div>
+                  <div className="text-sm text-primary-foreground/90">إنشاء حساب للمرضى والمرافقين</div>
                 </div>
               </Link>
             </Button>
@@ -39,15 +39,15 @@ export default function SignUpPage() {
               <Link href="/signup/doctor">
                 <Stethoscope className="h-8 w-8" />
                 <div className="text-center">
-                  <div className="font-semibold text-lg">طبيب / إداري</div>
-                  <div className="text-sm text-muted-foreground">إنشاء حساب للأطباء والإداريين</div>
+                  <div className="font-semibold text-lg text-foreground">طبيب / إداري</div>
+                  <div className="text-sm text-foreground/70">إنشاء حساب للأطباء والإداريين</div>
                 </div>
               </Link>
             </Button>
           </div>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">لديك حساب بالفعل؟ </span>
+            <span className="text-foreground/70">لديك حساب بالفعل؟ </span>
             <Link href="/login" className="font-medium text-primary hover:underline">
               سجل الدخول
             </Link>

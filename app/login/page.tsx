@@ -43,7 +43,7 @@ function LoginForm() {
                 <User className="h-8 w-8" />
                 <div className="text-center">
                   <div className="font-semibold text-lg">مريض / مرافق</div>
-                  <div className="text-sm text-muted-foreground">تسجيل دخول للمرضى والمرافقين</div>
+                  <div className="text-sm text-primary-foreground/90">تسجيل دخول للمرضى والمرافقين</div>
                 </div>
               </Link>
             </Button>
@@ -52,15 +52,15 @@ function LoginForm() {
               <Link href={doctorLoginUrl}>
                 <Stethoscope className="h-8 w-8" />
                 <div className="text-center">
-                  <div className="font-semibold text-lg">طبيب / إداري</div>
-                  <div className="text-sm text-muted-foreground">تسجيل دخول للأطباء والإداريين</div>
+                  <div className="font-semibold text-lg text-foreground">طبيب / إداري</div>
+                  <div className="text-sm text-foreground/70">تسجيل دخول للأطباء والإداريين</div>
                 </div>
               </Link>
             </Button>
           </div>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">ليس لديك حساب؟ </span>
+            <span className="text-foreground/70">ليس لديك حساب؟ </span>
             <Link href="/signup" className="font-medium text-primary hover:underline">
               سجل الآن
             </Link>

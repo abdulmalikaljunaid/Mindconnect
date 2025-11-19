@@ -185,7 +185,7 @@ export default function UserLoginPage() {
                     <User className="h-4 w-4" />
                     <div>
                       <div className="font-medium">مريض</div>
-                      <div className="text-xs text-muted-foreground">أبحث عن دعم الصحة النفسية</div>
+                      <div className="text-xs text-foreground/70">أبحث عن دعم الصحة النفسية</div>
                     </div>
                   </Label>
                 </div>
@@ -196,7 +196,7 @@ export default function UserLoginPage() {
                     <Users className="h-4 w-4" />
                     <div>
                       <div className="font-medium">مرافق</div>
-                      <div className="text-xs text-muted-foreground">أدعم مريضاً</div>
+                      <div className="text-xs text-foreground/70">أدعم مريضاً</div>
                     </div>
                   </Label>
                 </div>
@@ -222,7 +222,7 @@ export default function UserLoginPage() {
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">أو</span>
+                <span className="bg-background px-2 text-foreground/70">أو</span>
               </div>
             </div>
 
@@ -302,13 +302,13 @@ export default function UserLoginPage() {
 
           <div className="mt-6 space-y-3">
             <div className="text-center text-sm">
-              <span className="text-muted-foreground">ليس لديك حساب؟ </span>
+              <span className="text-foreground/70">ليس لديك حساب؟ </span>
               <Link href="/signup/user" className="font-medium text-primary hover:underline">
                 سجل الآن
               </Link>
             </div>
             <div className="text-center text-sm">
-              <Link href="/login" className="text-muted-foreground hover:underline">
+              <Link href="/login" className="text-foreground/70 hover:underline">
                 ← العودة لاختيار نوع الحساب
               </Link>
             </div>

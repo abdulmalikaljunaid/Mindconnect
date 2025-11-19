@@ -42,7 +42,7 @@ export function SymptomInputStep({ onBack, onNext }: SymptomInputStepProps) {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">صف لنا ما تشعر به</h2>
-        <p className="text-muted-foreground">
+        <p className="text-foreground/70">
           اكتب بحرية عن أعراضك، مشاعرك، أو أي شيء تريد مناقشته مع طبيب نفسي
         </p>
       </div>
@@ -76,11 +76,11 @@ export function SymptomInputStep({ onBack, onNext }: SymptomInputStepProps) {
               {isTooShort && (
                 <AlertCircle className="h-4 w-4 text-destructive" />
               )}
-              <span className={isTooShort ? "text-destructive" : "text-muted-foreground"}>
+              <span className={isTooShort ? "text-destructive" : "text-foreground/70"}>
                 {characterCount}/2000 حرف
               </span>
             </div>
-            <span className="text-muted-foreground">
+            <span className="text-foreground/70">
               الحد الأدنى: 10 أحرف
             </span>
           </div>

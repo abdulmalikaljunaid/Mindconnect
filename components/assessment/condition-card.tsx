@@ -70,12 +70,12 @@ export function ConditionCard({ condition }: ConditionCardProps) {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <h4 className="font-semibold text-sm">الوصف:</h4>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <p className="text-sm text-foreground/80 leading-relaxed">
             {condition.description}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-foreground/70">
           <TrendingUp className="h-3 w-3" />
           <span>نسبة الاحتمالية: {condition.probability}%</span>
         </div>

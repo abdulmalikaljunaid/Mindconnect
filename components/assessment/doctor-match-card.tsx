@@ -50,7 +50,7 @@ export function DoctorMatchCard({ doctorMatch, onBookAppointment }: DoctorMatchC
               </Badge>
             </div>
             
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 text-sm text-foreground/70">
               <div className="flex items-center gap-1">
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                 <span>{doctor.rating}</span>
@@ -78,7 +78,7 @@ export function DoctorMatchCard({ doctorMatch, onBookAppointment }: DoctorMatchC
         
         <div>
           <h4 className="font-semibold text-sm mb-2">النبذة:</h4>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <p className="text-sm text-foreground/80 leading-relaxed">
             {doctor.bio}
           </p>
         </div>
