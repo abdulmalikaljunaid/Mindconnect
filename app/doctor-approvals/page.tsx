@@ -21,6 +21,9 @@ export default function DoctorApprovalsPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false)
   const [rejectionNotes, setRejectionNotes] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [viewingDocument, setViewingDocument] = useState<{ url: string; name: string } | null>(null)
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false)
   const { pending, approved, rejected, isLoading, approveDoctor, rejectDoctor, refresh } = useAdminDoctors()
   const { toast } = useToast()
 
@@ -157,24 +160,18 @@ export default function DoctorApprovalsPage() {
       return
     }
 
+    setIsLoadingDocument(true)
+    setViewingDocument({ url, name: documentName })
+    setDocumentUrl(null)
+
     try {
-      const documentUrl = await getDocumentUrl(url)
+      const docUrl = await getDocumentUrl(url)
       
-      if (!documentUrl) {
+      if (!docUrl) {
         throw new Error("فشل في الحصول على رابط الملف")
       }
 
-      // Use a unique window name for each document type to allow multiple windows
-      const windowName = `doc_${documentName}_${Date.now()}`
-      const newWindow = window.open(documentUrl, windowName, 'noopener,noreferrer')
-      
-      if (!newWindow) {
-        toast({
-          title: "تم حظر النافذة المنبثقة",
-          description: "يرجى السماح للنوافذ المنبثقة في إعدادات المتصفح",
-          variant: "destructive",
-        })
-      }
+      setDocumentUrl(docUrl)
     } catch (error: any) {
       console.error('Error viewing document:', error)
       toast({
@@ -182,7 +179,16 @@ export default function DoctorApprovalsPage() {
         description: error.message || "فشل في فتح الملف. يرجى التحقق من صحة الرابط.",
         variant: "destructive",
       })
+      setViewingDocument(null)
+    } finally {
+      setIsLoadingDocument(false)
     }
+  }
+
+  const closeDocumentViewer = () => {
+    setViewingDocument(null)
+    setDocumentUrl(null)
+    setIsLoadingDocument(false)
   }
 
   const handleDownloadDocument = async (url: string | null | undefined, documentName: string, fileName: string) => {
@@ -617,6 +623,82 @@ export default function DoctorApprovalsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={!!viewingDocument} onOpenChange={(open) => !open && closeDocumentViewer()}>
+        <DialogContent className="max-w-5xl max-h-[90vh] p-0">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>{viewingDocument?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-6">
+            {isLoadingDocument ? (
+              <div className="flex items-center justify-center h-96">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-sm text-muted-foreground">جاري تحميل المستند...</p>
+                </div>
+              </div>
+            ) : documentUrl ? (
+              <div className="relative w-full h-[70vh] border rounded-lg overflow-hidden bg-muted">
+                {documentUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                  <img 
+                    src={documentUrl} 
+                    alt={viewingDocument?.name || "المستند"}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      console.error("Error loading image:", e)
+                      toast({
+                        title: "خطأ",
+                        description: "فشل في تحميل الصورة",
+                        variant: "destructive",
+                      })
+                    }}
+                  />
+                ) : (
+                  <iframe
+                    src={documentUrl}
+                    className="w-full h-full border-0"
+                    title={viewingDocument?.name || "المستند"}
+                    onError={() => {
+                      toast({
+                        title: "خطأ",
+                        description: "فشل في تحميل المستند",
+                        variant: "destructive",
+                      })
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-96">
+                <p className="text-sm text-muted-foreground">فشل في تحميل المستند</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="px-6 pb-6">
+            {documentUrl && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (viewingDocument) {
+                    handleDownloadDocument(
+                      viewingDocument.url,
+                      viewingDocument.name,
+                      `${viewingDocument.name}.pdf`
+                    )
+                  }
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                تنزيل
+              </Button>
+            )}
+            <Button variant="outline" onClick={closeDocumentViewer}>
+              إغلاق
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
