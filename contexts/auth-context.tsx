@@ -32,12 +32,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       try {
         // First check if there's a session in the URL (OAuth callback)
-        const { data: { session } } = await authService.supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = await authService.supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error("Session check error:", sessionError)
+          setUser(null)
+          setIsLoading(false)
+          initCompleteRef.current = true
+          return
+        }
         
         if (session) {
           // Session exists, get user profile
-          const currentUser = await authService.getCurrentUser()
-          setUser(currentUser)
+          try {
+            const currentUser = await authService.getCurrentUser()
+            if (currentUser) {
+              setUser(currentUser)
+            } else {
+              // Session exists but user profile not found - might be a temporary issue
+              // Don't clear user immediately, wait for auth state change listener
+              console.warn("Session exists but user profile not found")
+            }
+          } catch (userError) {
+            console.error("Failed to get user profile:", userError)
+            // Don't clear user on error - might be temporary network issue
+            // The auth state change listener will handle it
+          }
         } else {
           // No session, check if there's a code in URL (OAuth redirect)
           const urlParams = new URLSearchParams(window.location.search)
@@ -48,12 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const { data: { session: retrySession } } = await authService.supabase.auth.getSession()
                 if (retrySession) {
                   const currentUser = await authService.getCurrentUser()
-                  setUser(currentUser)
+                  if (currentUser) {
+                    setUser(currentUser)
+                  }
                 }
               } catch (error) {
                 console.error("Failed to get user after OAuth:", error)
               }
             }, 1000)
+          } else {
+            // No session and no OAuth code - user is not authenticated
+            setUser(null)
           }
         }
       } catch (error) {
@@ -73,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (event === "SIGNED_OUT" || !session) {
         setUser(null)
+        setIsLoading(false)
         return
       }
 
@@ -85,12 +111,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Session is valid, keep user state
             setUser(currentUser)
           } else {
-            // Session refresh failed, clear user
-            setUser(null)
+            // Session refresh failed, but don't clear user immediately
+            // Try to get session again to verify
+            const { data: { session: verifySession } } = await authService.supabase.auth.getSession()
+            if (!verifySession) {
+              setUser(null)
+            }
           }
         } catch (error) {
           console.error("Failed to verify user after token refresh:", error)
           // Don't clear user on refresh error - might be temporary network issue
+          // Only clear if session is actually gone
+          try {
+            const { data: { session: verifySession } } = await authService.supabase.auth.getSession()
+            if (!verifySession) {
+              setUser(null)
+            }
+          } catch (verifyError) {
+            console.error("Failed to verify session:", verifyError)
+          }
         }
         return
       }
@@ -99,9 +138,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_IN" || event === "USER_UPDATED") {
         try {
           const currentUser = await authService.getCurrentUser()
-          setUser(currentUser)
+          if (currentUser) {
+            setUser(currentUser)
+          } else {
+            // User not found but session exists - might be a temporary issue
+            // Don't clear user immediately, wait a bit and retry
+            setTimeout(async () => {
+              try {
+                const retryUser = await authService.getCurrentUser()
+                if (retryUser) {
+                  setUser(retryUser)
+                } else {
+                  // Still no user after retry - clear state
+                  const { data: { session: verifySession } } = await authService.supabase.auth.getSession()
+                  if (!verifySession) {
+                    setUser(null)
+                  }
+                }
+              } catch (retryError) {
+                console.error("Failed to retry get user:", retryError)
+              }
+            }, 500)
+          }
         } catch (error) {
           console.error("Failed to fetch user after auth state change:", error)
+          // Don't clear user on error - might be temporary network issue
         }
       }
     })

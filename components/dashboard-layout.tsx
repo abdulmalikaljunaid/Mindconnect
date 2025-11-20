@@ -2,10 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -32,9 +33,16 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, signOut } = useAuth()
+  const { user, isAuthenticated, isLoading, signOut } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
+
+  // Redirect to login if not authenticated (but wait for loading to complete)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login")
+    }
+  }, [isAuthenticated, isLoading, router])
 
   const handleSignOut = async () => {
     try {
@@ -100,6 +108,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const navigationItems = getNavigationItems()
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner className="h-8 w-8" />
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated || !user) {
+    return null
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

@@ -117,17 +117,34 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<AuthState["user"]> {
+    // First verify session exists
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession()
+
+    if (!session) return null
+
+    // Then get user
     const {
       data: { user },
+      error: userError,
     } = await supabaseClient.auth.getUser()
 
-    if (!user) return null
+    if (userError || !user) {
+      console.error("Error getting user:", userError)
+      return null
+    }
 
-    const { data: profile } = await supabaseClient
+    const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .maybeSingle()
+
+    if (profileError && profileError.code !== "PGRST116") {
+      // PGRST116 is "no rows returned" which is expected for new users
+      console.error("Error fetching profile:", profileError)
+    }
 
     return mapProfile(user, profile)
   },
