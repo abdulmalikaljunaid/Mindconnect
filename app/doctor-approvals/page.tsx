@@ -186,15 +186,24 @@ export default function DoctorApprovalsPage() {
   }
 
   const closeDocumentViewer = () => {
-    // Clear all document-related state
+    // Clear all document-related state immediately
     setViewingDocument(null)
     setDocumentUrl(null)
     setIsLoadingDocument(false)
-    // Force a re-render to ensure dialog closes
-    setTimeout(() => {
-      // Small delay to ensure state updates are processed
-    }, 0)
   }
+
+  // Ensure dialog state is properly managed
+  useEffect(() => {
+    // If viewingDocument is null, ensure all related state is cleared
+    if (!viewingDocument) {
+      if (documentUrl) {
+        setDocumentUrl(null)
+      }
+      if (isLoadingDocument) {
+        setIsLoadingDocument(false)
+      }
+    }
+  }, [viewingDocument, documentUrl, isLoadingDocument])
 
   const handleDownloadDocument = async (url: string | null | undefined, documentName: string, fileName: string) => {
     if (!url) {
