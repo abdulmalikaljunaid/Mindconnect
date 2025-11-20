@@ -23,6 +23,15 @@ export interface Notification {
   }
 }
 
+export interface CreateNotificationInput {
+  type: "message" | "appointment" | "system"
+  title: string
+  message: string
+  related_id?: string | null
+  sender_id?: string | null
+  metadata?: any
+}
+
 export interface UseNotificationsResult {
   notifications: Notification[]
   unreadCount: number
@@ -31,6 +40,7 @@ export interface UseNotificationsResult {
   markAsRead: (notificationId: string) => Promise<void>
   markAllAsRead: () => Promise<void>
   deleteNotification: (notificationId: string) => Promise<void>
+  createNotification: (input: CreateNotificationInput) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -204,6 +214,37 @@ export function useNotifications(): UseNotificationsResult {
     [user]
   )
 
+  // إنشاء إشعار جديد
+  const createNotification = useCallback(
+    async (input: CreateNotificationInput) => {
+      if (!user) return
+
+      try {
+        const { error: insertError } = await supabaseClient
+          .from("notifications")
+          .insert({
+            user_id: user.id,
+            type: input.type,
+            title: input.title,
+            body: input.message,
+            related_id: input.related_id || null,
+            sender_id: input.sender_id || null,
+            metadata: input.metadata || {},
+            is_read: false,
+          })
+
+        if (insertError) throw insertError
+
+        // إعادة جلب الإشعارات لتحديث القائمة
+        await fetchNotifications()
+      } catch (err: any) {
+        console.error("Error creating notification:", err)
+        throw err
+      }
+    },
+    [user, fetchNotifications]
+  )
+
   // حساب عدد الإشعارات غير المقروءة
   const unreadCount = notifications.filter((notif) => !notif.is_read).length
 
@@ -375,6 +416,7 @@ export function useNotifications(): UseNotificationsResult {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    createNotification,
     refresh: fetchNotifications,
   }
 }

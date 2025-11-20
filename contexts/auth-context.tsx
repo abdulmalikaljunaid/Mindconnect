@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react"
 import { authService, type UserProfile, type UserRole } from "@/lib/auth"
 import { useSessionRefresh } from "@/hooks/use-session-refresh"
+import { useSessionExpiryNotification } from "@/hooks/use-session-expiry-notification"
 
 interface AuthContextType {
   user: UserProfile | null
@@ -95,6 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: listener } = authService.supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session ? "Session exists" : "No session")
+      
+      // Handle token refresh errors
+      if (event === "TOKEN_REFRESHED" && !session) {
+        console.warn("Token refresh failed - no session returned")
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
       
       if (event === "SIGNED_OUT" || !session) {
         setUser(null)

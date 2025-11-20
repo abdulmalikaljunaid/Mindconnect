@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { SessionInfo } from "@/components/session-info"
 
 export default function SettingsPage() {
   return (
@@ -111,6 +112,8 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="security" className="space-y-4">
+            <SessionInfo />
+            
             <Card>
               <CardHeader>
                 <CardTitle>إعدادات الأمان</CardTitle>
@@ -127,7 +130,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">انتهاء الجلسة</p>
-                    <p className="text-sm text-muted-foreground">تسجيل الخروج التلقائي بعد 30 دقيقة من عدم النشاط</p>
+                    <p className="text-sm text-muted-foreground">تسجيل الخروج التلقائي بعد ساعة واحدة من آخر نشاط</p>
                   </div>
                   <Switch defaultChecked />
                 </div>

@@ -36,16 +36,51 @@ export function useSessionRefresh() {
         const expiresAt = session.expires_at
         if (!expiresAt) return
 
+        // Check if refresh token exists - if not, don't try to refresh
+        if (!session.refresh_token) {
+          console.warn("No refresh token available, cannot refresh session")
+          return
+        }
+
         const now = Math.floor(Date.now() / 1000)
         const timeUntilExpiry = expiresAt - now
 
-        // If token expires within 5 minutes, refresh it proactively
-        if (timeUntilExpiry < 300) {
-          console.log("Token expiring soon, refreshing...")
+        // If token is expired, try to refresh immediately
+        if (timeUntilExpiry <= 0) {
+          console.log("Token expired, attempting refresh...")
           
           const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession()
           
           if (refreshError) {
+            // Check if it's a refresh token error
+            if (refreshError.message?.includes("Refresh Token") || refreshError.message?.includes("refresh_token")) {
+              console.warn("Refresh token not found or invalid, session expired")
+              // Clear session and let user re-authenticate
+              await supabaseClient.auth.signOut()
+              return
+            }
+            console.error("Session refresh error (expired):", refreshError)
+            // If refresh fails, try to get a new session
+            await supabaseClient.auth.getSession()
+          } else if (refreshData.session) {
+            console.log("Expired session refreshed successfully")
+          }
+          return
+        }
+
+        // If token expires within 5 minutes, refresh it proactively
+        if (timeUntilExpiry < 300) {
+          console.log(`Token expiring soon (${Math.floor(timeUntilExpiry / 60)} minutes remaining), refreshing...`)
+          
+          const { data: refreshData, error: refreshError } = await supabaseClient.auth.refreshSession()
+          
+          if (refreshError) {
+            // Check if it's a refresh token error
+            if (refreshError.message?.includes("Refresh Token") || refreshError.message?.includes("refresh_token")) {
+              console.warn("Refresh token not found or invalid, session will expire soon")
+              // Don't sign out immediately, let the session expire naturally
+              return
+            }
             console.error("Session refresh error:", refreshError)
             // If refresh fails, try to get a new session
             await supabaseClient.auth.getSession()
