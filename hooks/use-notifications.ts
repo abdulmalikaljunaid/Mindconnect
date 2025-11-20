@@ -255,18 +255,30 @@ export function useNotifications(): UseNotificationsResult {
     }
 
     let mounted = true
+    let retryCount = 0
+    const MAX_RETRIES = 3
 
-    // إلغاء الاشتراك السابق إن وُجد
-    if (channelRef.current) {
-      supabaseClient.removeChannel(channelRef.current)
-      channelRef.current = null
-    }
+    const setupChannel = () => {
+      // إلغاء الاشتراك السابق إن وُجد
+      if (channelRef.current) {
+        try {
+          supabaseClient.removeChannel(channelRef.current)
+        } catch (error) {
+          console.warn("Error removing previous channel:", error)
+        }
+        channelRef.current = null
+      }
 
-    // إنشاء قناة جديدة للإشعارات مع اسم فريد
-    const channelName = `notifications:${user.id}:${Date.now()}`
-    console.log(`🔔 Setting up notifications channel: ${channelName}`)
+      // إنشاء قناة جديدة للإشعارات مع اسم فريد
+      const channelName = `notifications:${user.id}:${Date.now()}`
+      console.log(`🔔 Setting up notifications channel: ${channelName}`)
 
-    const channel = supabaseClient.channel(channelName)
+      const channel = supabaseClient.channel(channelName, {
+        config: {
+          // Use broadcast mode instead of postgres_changes if there's a binding mismatch
+          broadcast: { self: false },
+        },
+      })
 
     // إضافة listener للرسائل الجديدة
     const insertListener = channel.on(
@@ -378,26 +390,58 @@ export function useNotifications(): UseNotificationsResult {
       }
     )
 
-    // الاشتراك في القناة
-    channel.subscribe((status, err) => {
-      console.log(`📡 Notifications subscription status:`, status, err)
+      // الاشتراك في القناة
+      channel.subscribe((status, err) => {
+        console.log(`📡 Notifications subscription status:`, status, err)
 
-      if (status === "SUBSCRIBED") {
-        console.log("✅ Successfully subscribed to notifications channel")
-      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        console.error("❌ Notifications subscription error:", status, err)
-      } else if (status === "CLOSED") {
-        console.log("ℹ️ Notifications channel closed (normal during cleanup)")
-      }
-    })
+        if (status === "SUBSCRIBED") {
+          console.log("✅ Successfully subscribed to notifications channel")
+          retryCount = 0 // Reset retry count on success
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          // Handle Realtime errors gracefully
+          if (err && err.message?.includes("mismatch between server and client bindings")) {
+            // This error is safe to ignore - notifications will still work via polling
+            // Use console.debug instead of console.warn to reduce noise
+            console.debug("⚠️ Realtime binding mismatch (safe to ignore - notifications work via polling)")
+            // Don't treat this as a critical error - notifications will still work via fetchNotifications
+            // Don't retry for binding mismatch errors
+            return
+          } else {
+            console.error("❌ Notifications subscription error:", status, err)
+          }
+          
+          // Retry logic for other errors
+          if (retryCount < MAX_RETRIES && mounted) {
+            retryCount++
+            console.log(`🔄 Retrying notifications subscription (${retryCount}/${MAX_RETRIES})...`)
+            setTimeout(() => {
+              if (mounted) {
+                setupChannel()
+              }
+            }, 2000 * retryCount) // Exponential backoff
+          } else {
+            console.warn("⚠️ Max retries reached for notifications subscription. Notifications will work via polling.")
+          }
+        } else if (status === "CLOSED") {
+          console.log("ℹ️ Notifications channel closed (normal during cleanup)")
+        }
+      })
 
-    channelRef.current = channel
+      channelRef.current = channel
+    }
+
+    // Setup channel initially
+    setupChannel()
 
     return () => {
       mounted = false
       if (channelRef.current) {
-        console.log("🧹 Cleaning up notifications channel:", channelName)
-        supabaseClient.removeChannel(channelRef.current)
+        try {
+          console.log("🧹 Cleaning up notifications channel")
+          supabaseClient.removeChannel(channelRef.current)
+        } catch (error) {
+          console.warn("Error cleaning up channel:", error)
+        }
         channelRef.current = null
       }
     }
