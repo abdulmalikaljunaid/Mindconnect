@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -186,9 +186,14 @@ export default function DoctorApprovalsPage() {
   }
 
   const closeDocumentViewer = () => {
+    // Clear all document-related state
     setViewingDocument(null)
     setDocumentUrl(null)
     setIsLoadingDocument(false)
+    // Force a re-render to ensure dialog closes
+    setTimeout(() => {
+      // Small delay to ensure state updates are processed
+    }, 0)
   }
 
   const handleDownloadDocument = async (url: string | null | undefined, documentName: string, fileName: string) => {
@@ -627,8 +632,27 @@ export default function DoctorApprovalsPage() {
       </Dialog>
 
       {/* Document Viewer Dialog */}
-      <Dialog open={!!viewingDocument} onOpenChange={(open) => !open && closeDocumentViewer()}>
-        <DialogContent className="max-w-5xl max-h-[90vh] p-0">
+      <Dialog 
+        open={!!viewingDocument} 
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDocumentViewer()
+          }
+        }}
+        modal={true}
+      >
+        <DialogContent 
+          className="max-w-5xl max-h-[90vh] p-0"
+          showCloseButton={true}
+          onPointerDownOutside={(e) => {
+            // Allow closing by clicking outside
+            closeDocumentViewer()
+          }}
+          onEscapeKeyDown={(e) => {
+            // Allow closing with Escape key
+            closeDocumentViewer()
+          }}
+        >
           <DialogHeader className="px-6 pt-6">
             <DialogTitle>{viewingDocument?.name}</DialogTitle>
           </DialogHeader>
@@ -695,7 +719,15 @@ export default function DoctorApprovalsPage() {
                 تنزيل
               </Button>
             )}
-            <Button variant="outline" onClick={closeDocumentViewer}>
+            <Button 
+              variant="outline" 
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                closeDocumentViewer()
+              }}
+              type="button"
+            >
               إغلاق
             </Button>
           </DialogFooter>
