@@ -649,6 +649,7 @@ export default function DoctorApprovalsPage() {
           }
         }}
         modal={true}
+        key={viewingDocument ? `doc-${viewingDocument.name}-${Date.now()}` : 'doc-closed'}
       >
         <DialogContent 
           className="max-w-5xl max-h-[90vh] p-0"
